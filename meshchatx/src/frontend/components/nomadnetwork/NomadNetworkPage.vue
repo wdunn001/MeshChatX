@@ -2587,8 +2587,68 @@ export default {
                 return;
             }
 
+            // rns-resolve: a human-readable name is not a hash and not a
+            // page/file url, so before giving up, ask the resolver. Mirrors
+            // the NomadNet Browser.py fallback: classify/petname/resolver/TOFU
+            // all live in the backend, and a 32-hex hash never reaches here.
+            const resolvedHash = await this.tryRnsResolve(url);
+            if (resolvedHash) {
+                this.selectedNode = this.resolveNodeForHash(resolvedHash);
+                this.loadNodePage(
+                    resolvedHash,
+                    this.defaultNodePagePath,
+                    [],
+                    addToHistory,
+                    useCache,
+                    navOptions,
+                );
+                return;
+            }
+
             // unsupported url
             ToastUtils.warning(this.$t("nomadnet.unsupported_url") + url);
+        },
+        async tryRnsResolve(url) {
+            // only names reach here; skip anything hash- or path-shaped
+            const name = (url || "").trim();
+            if (
+                !name ||
+                name.includes(":") ||
+                name.startsWith("/") ||
+                /^[0-9a-fA-F]{32}$/.test(name)
+            ) {
+                return null;
+            }
+            try {
+                const api = window.api;
+                if (!api) {
+                    return null;
+                }
+                const res = await api.post("/api/v1/resolve", { query: name });
+                const data = res.data || {};
+                if (data.kind === "hash" || data.kind === "petname") {
+                    return data.hash || null;
+                }
+                if (data.kind === "candidates") {
+                    const registered = data.registered || [];
+                    if (registered.length >= 1 && registered[0].target) {
+                        const target = registered[0].target;
+                        // TOFU: pin the chosen name so later lookups are local
+                        try {
+                            await api.post("/api/v1/resolve/pin", {
+                                name: data.name,
+                                hash: target,
+                            });
+                        } catch (e) {
+                            // pin failure is non-fatal
+                        }
+                        return target;
+                    }
+                }
+            } catch (e) {
+                // fall through to the unsupported-url toast
+            }
+            return null;
         },
         downloadFileFromBase64: async function (fileName, fileBytesBase64) {
             DownloadUtils.downloadFromBase64(fileName, fileBytesBase64);
