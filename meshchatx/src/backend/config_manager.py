@@ -80,6 +80,21 @@ class ConfigManager:
         )
         self.lxmf_address_hash = self.StringConfig(self, "lxmf_address_hash", None)
         self.lxst_address_hash = self.StringConfig(self, "lxst_address_hash", None)
+        # rns-resolve: human-readable names for NomadNet addresses. When
+        # enabled and a resolver destination is set, a non-hash address is
+        # resolved via rns-resolve (classify -> local petnames -> resolver
+        # link -> TOFU pin). A 32-hex hash is always used directly and is
+        # never sent to a resolver.
+        self.rns_resolve_enabled = self.BoolConfig(
+            self,
+            "rns_resolve_enabled",
+            False,
+        )
+        self.rns_resolve_resolver_destination_hash = self.StringConfig(
+            self,
+            "rns_resolve_resolver_destination_hash",
+            None,
+        )
         self.lxmf_local_propagation_node_enabled = self.BoolConfig(
             self,
             "lxmf_local_propagation_node_enabled",

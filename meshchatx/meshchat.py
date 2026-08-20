@@ -5907,6 +5907,16 @@ class ReticulumMeshChat:
             # update active propagation node
             self.set_active_propagation_node(value)
 
+        if "rns_resolve_enabled" in data:
+            value = self._parse_bool(data["rns_resolve_enabled"])
+            self.config.rns_resolve_enabled.set(value)
+
+        if "rns_resolve_resolver_destination_hash" in data:
+            value = data["rns_resolve_resolver_destination_hash"]
+            if value is not None:
+                value = str(value).strip().lower() or None
+            self.config.rns_resolve_resolver_destination_hash.set(value)
+
         if "lxmf_preferred_propagation_node_auto_select" in data:
             value = self._parse_bool(
                 data["lxmf_preferred_propagation_node_auto_select"],
@@ -7287,6 +7297,8 @@ class ReticulumMeshChat:
             "lxmf_preferred_propagation_node_auto_select": ctx.config.lxmf_preferred_propagation_node_auto_select.get(),
             "lxmf_preferred_propagation_node_auto_sync_interval_seconds": ctx.config.lxmf_preferred_propagation_node_auto_sync_interval_seconds.get(),
             "lxmf_preferred_propagation_node_last_synced_at": ctx.config.lxmf_preferred_propagation_node_last_synced_at.get(),
+            "rns_resolve_enabled": ctx.config.rns_resolve_enabled.get(),
+            "rns_resolve_resolver_destination_hash": ctx.config.rns_resolve_resolver_destination_hash.get(),
             "lxmf_user_icon_name": ctx.config.lxmf_user_icon_name.get(),
             "lxmf_user_icon_foreground_colour": ctx.config.lxmf_user_icon_foreground_colour.get(),
             "lxmf_user_icon_background_colour": ctx.config.lxmf_user_icon_background_colour.get(),
