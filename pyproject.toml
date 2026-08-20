@@ -41,6 +41,14 @@ dependencies = [
   "altcha>=2.0.2",
 ]
 
+[project.optional-dependencies]
+# Human-readable NomadNet names via rns-resolve. Optional: the backend
+# guards the import, so MeshChatX runs unchanged when this is absent.
+# The container installs this extra so the resolve feature is live.
+resolve = [
+  "rns-resolve @ git+https://github.com/wdunn001/rns-resolve.git",
+]
+
 [project.scripts]
 meshchatx = "meshchatx.meshchat:main"
 meshchat = "meshchatx.meshchat:main"
