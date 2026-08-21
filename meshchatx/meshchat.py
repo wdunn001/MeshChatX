@@ -5490,6 +5490,57 @@ class ReticulumMeshChat:
 
         app.add_routes(routes)
 
+        # rns-resolve: turn a typed NomadNet name into a destination hash.
+        # The classify/petname/resolver/TOFU pipeline lives in
+        # rns_resolve_bridge; a 32-hex hash is never sent to a resolver.
+        async def rns_resolve_handler(request):
+            from meshchatx.src.backend import rns_resolve_bridge
+
+            try:
+                data = await request.json()
+            except Exception:
+                data = {}
+            query = ""
+            if isinstance(data, dict):
+                query = str(data.get("query") or "").strip()
+            enabled = bool(self.config.rns_resolve_enabled.get())
+            resolver = self.config.rns_resolve_resolver_destination_hash.get()
+            loop = asyncio.get_running_loop()
+            # the resolver round trip is a blocking RNS Link; keep it off the loop
+            result = await loop.run_in_executor(
+                None,
+                rns_resolve_bridge.resolve_candidates,
+                query,
+                enabled,
+                resolver,
+                self.reticulum_config_dir,
+                self.storage_dir,
+            )
+            return web.json_response(result)
+
+        async def rns_resolve_pin_handler(request):
+            from meshchatx.src.backend import rns_resolve_bridge
+
+            try:
+                data = await request.json()
+            except Exception:
+                data = {}
+            name = data.get("name") if isinstance(data, dict) else None
+            hash_hex = data.get("hash") if isinstance(data, dict) else None
+            ok = rns_resolve_bridge.pin(name, hash_hex, self.storage_dir)
+            return web.json_response({"ok": bool(ok)})
+
+        async def rns_resolve_pins_handler(_request):
+            from meshchatx.src.backend import rns_resolve_bridge
+
+            return web.json_response(
+                {"pins": rns_resolve_bridge.list_pins(self.storage_dir)},
+            )
+
+        app.router.add_post("/api/v1/resolve", rns_resolve_handler)
+        app.router.add_post("/api/v1/resolve/pin", rns_resolve_pin_handler)
+        app.router.add_get("/api/v1/resolve/pins", rns_resolve_pins_handler)
+
         async def robots_txt_handler(_request):
             return web.Response(
                 text="User-agent: *\nDisallow: /\n",
