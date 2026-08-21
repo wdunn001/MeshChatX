@@ -780,6 +780,12 @@
                             @flush="flushArchivedPages"
                         />
 
+                        <NamingSettingsSection
+                            :visible="showSection('naming')"
+                            :config="config"
+                            @update-field="onNamingFieldChange"
+                        />
+
                         <!-- NomadNet browser renderer -->
                         <section v-show="showSection('nomadRenderer')" class="settings-section break-inside-avoid">
                             <header class="settings-section__header">
@@ -2889,6 +2895,7 @@ import VisualiserSettingsSection from "./sections/VisualiserSettingsSection.vue"
 import BlockedSettingsSection from "./sections/BlockedSettingsSection.vue";
 import AndroidSettingsSection from "./sections/AndroidSettingsSection.vue";
 import ArchiverSettingsSection from "./sections/ArchiverSettingsSection.vue";
+import NamingSettingsSection from "./sections/NamingSettingsSection.vue";
 import SettingsNav from "./SettingsNav.vue";
 import KeyboardShortcuts from "../../js/KeyboardShortcuts";
 import ElectronUtils from "../../js/ElectronUtils";
@@ -2968,6 +2975,7 @@ export default {
         BlockedSettingsSection,
         AndroidSettingsSection,
         ArchiverSettingsSection,
+        NamingSettingsSection,
         MicronWasmUpdateModal,
         NotificationSoundSettings,
     },
@@ -4712,6 +4720,10 @@ export default {
                     lxmf_flood_cooldown_seconds: v,
                 });
             }, 1000);
+        },
+        async onNamingFieldChange(patch) {
+            this.config[patch.key] = patch.value;
+            await this.updateConfig({ [patch.key]: patch.value }, "naming");
         },
         async onPageArchiverEnabledChangeWrapper(value) {
             this.config.page_archiver_enabled = value;

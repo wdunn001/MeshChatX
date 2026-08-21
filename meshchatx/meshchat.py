@@ -5516,6 +5516,48 @@ class ReticulumMeshChat:
 
         app.add_routes(routes)
 
+        # rns-resolve: turn a typed NomadNet name into a destination hash.
+        # The classify/petname/resolver/TOFU pipeline lives in
+        # rns_resolve_bridge; a 32-hex hash is never sent to a resolver.
+        async def rns_resolve_handler(request):
+            from meshchatx.src.backend import rns_resolve_bridge
+
+            try:
+                data = await request.json()
+            except Exception:
+                data = {}
+            query = ""
+            if isinstance(data, dict):
+                query = str(data.get("query") or "").strip()
+            enabled = bool(self.config.rns_resolve_enabled.get())
+            resolver = self.config.rns_resolve_resolver_destination_hashes.get()
+            loop = asyncio.get_running_loop()
+            # the resolver round trip is a blocking RNS Link; keep it off the loop
+            result = await loop.run_in_executor(
+                None,
+                rns_resolve_bridge.resolve_candidates,
+                query,
+                enabled,
+                resolver,
+                self.database.announces,
+            )
+            return web.json_response(result)
+
+        async def rns_resolve_pin_handler(request):
+            from meshchatx.src.backend import rns_resolve_bridge
+
+            try:
+                data = await request.json()
+            except Exception:
+                data = {}
+            name = data.get("name") if isinstance(data, dict) else None
+            hash_hex = data.get("hash") if isinstance(data, dict) else None
+            ok = rns_resolve_bridge.pin(name, hash_hex, self.database.announces)
+            return web.json_response({"ok": bool(ok)})
+
+        app.router.add_post("/api/v1/resolve", rns_resolve_handler)
+        app.router.add_post("/api/v1/resolve/pin", rns_resolve_pin_handler)
+
         async def robots_txt_handler(_request):
             return web.Response(
                 text="User-agent: *\nDisallow: /\n",
@@ -5932,6 +5974,16 @@ class ReticulumMeshChat:
 
             # update active propagation node
             self.set_active_propagation_node(value)
+
+        if "rns_resolve_enabled" in data:
+            value = self._parse_bool(data["rns_resolve_enabled"])
+            self.config.rns_resolve_enabled.set(value)
+
+        if "rns_resolve_resolver_destination_hashes" in data:
+            value = data["rns_resolve_resolver_destination_hashes"]
+            if value is not None:
+                value = str(value).strip().lower() or None
+            self.config.rns_resolve_resolver_destination_hashes.set(value)
 
         if "lxmf_preferred_propagation_node_auto_select" in data:
             value = self._parse_bool(
@@ -7317,6 +7369,8 @@ class ReticulumMeshChat:
             "lxmf_preferred_propagation_node_auto_select": ctx.config.lxmf_preferred_propagation_node_auto_select.get(),
             "lxmf_preferred_propagation_node_auto_sync_interval_seconds": ctx.config.lxmf_preferred_propagation_node_auto_sync_interval_seconds.get(),
             "lxmf_preferred_propagation_node_last_synced_at": ctx.config.lxmf_preferred_propagation_node_last_synced_at.get(),
+            "rns_resolve_enabled": ctx.config.rns_resolve_enabled.get(),
+            "rns_resolve_resolver_destination_hashes": ctx.config.rns_resolve_resolver_destination_hashes.get(),
             "lxmf_user_icon_name": ctx.config.lxmf_user_icon_name.get(),
             "lxmf_user_icon_foreground_colour": ctx.config.lxmf_user_icon_foreground_colour.get(),
             "lxmf_user_icon_background_colour": ctx.config.lxmf_user_icon_background_colour.get(),
