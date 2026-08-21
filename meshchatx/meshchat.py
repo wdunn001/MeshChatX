@@ -100,6 +100,7 @@ from meshchatx.src.backend.database.access_attempts import (
 )
 from meshchatx.src.backend.identity_context import IdentityContext
 from meshchatx.src.backend.request_context import get_active_context
+from meshchatx.src.backend.multiuser import is_enabled as multiuser_is_enabled
 from meshchatx.src.backend.identity_manager import IdentityManager
 from meshchatx.src.backend.interface_config_parser import InterfaceConfigParser
 from meshchatx.src.backend.interface_editor import InterfaceEditor
@@ -5557,10 +5558,22 @@ class ReticulumMeshChat:
             self._encrypted_cookie_storage(use_https),
         )
 
+        # Serving more than one person is off unless switched on, and while it
+        # is off nothing from that package is imported and no middleware is
+        # added, so a single user install carries none of its cost.
+        multiuser_middlewares = []
+        if multiuser_is_enabled(self.storage_dir):
+            from meshchatx.src.backend.multiuser.middleware import (
+                create_multiuser_middleware,
+            )
+
+            multiuser_middlewares = [create_multiuser_middleware(self)]
+
         # add other middlewares
         app.middlewares.extend(
             [
                 auth_middleware,
+                *multiuser_middlewares,
                 mime_type_middleware,
                 security_middleware,
                 csrf_middleware,
