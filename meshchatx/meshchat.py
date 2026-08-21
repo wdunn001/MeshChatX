@@ -99,6 +99,7 @@ from meshchatx.src.backend.database.access_attempts import (
     user_agent_hash,
 )
 from meshchatx.src.backend.identity_context import IdentityContext
+from meshchatx.src.backend.request_context import get_active_context
 from meshchatx.src.backend.identity_manager import IdentityManager
 from meshchatx.src.backend.interface_config_parser import InterfaceConfigParser
 from meshchatx.src.backend.interface_editor import InterfaceEditor
@@ -753,22 +754,37 @@ class ReticulumMeshChat:
 
     # Proxy properties for backward compatibility
     @property
+    def active_context(self):
+        """The identity this work belongs to.
+
+        Inside an HTTP request that is the signed-in user's context, set by
+        middleware from the session. Everywhere else it is the single active
+        context, which is how MeshChatX behaved before multiple people could
+        be signed in at once.
+        """
+        return get_active_context() or self.current_context
+
+    @property
     def identity(self):
-        return self.current_context.identity if self.current_context else None
+        ctx = self.active_context
+        return ctx.identity if ctx else None
 
     @identity.setter
     def identity(self, value):
-        if self.current_context:
-            self.current_context.identity = value
+        ctx = self.active_context
+        if ctx:
+            ctx.identity = value
 
     @property
     def database(self):
-        return self.current_context.database if self.current_context else None
+        ctx = self.active_context
+        return ctx.database if ctx else None
 
     @database.setter
     def database(self, value):
-        if self.current_context:
-            self.current_context.database = value
+        ctx = self.active_context
+        if ctx:
+            ctx.database = value
 
     @property
     def db(self):
@@ -780,295 +796,333 @@ class ReticulumMeshChat:
 
     @property
     def config(self):
-        return self.current_context.config if self.current_context else None
+        ctx = self.active_context
+        return ctx.config if ctx else None
 
     @config.setter
     def config(self, value):
-        if self.current_context:
-            self.current_context.config = value
+        ctx = self.active_context
+        if ctx:
+            ctx.config = value
 
     @property
     def message_handler(self):
-        return self.current_context.message_handler if self.current_context else None
+        ctx = self.active_context
+        return ctx.message_handler if ctx else None
 
     @message_handler.setter
     def message_handler(self, value):
-        if self.current_context:
-            self.current_context.message_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.message_handler = value
 
     @property
     def announce_manager(self):
-        return self.current_context.announce_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.announce_manager if ctx else None
 
     @announce_manager.setter
     def announce_manager(self, value):
-        if self.current_context:
-            self.current_context.announce_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.announce_manager = value
 
     @property
     def archiver_manager(self):
-        return self.current_context.archiver_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.archiver_manager if ctx else None
 
     @archiver_manager.setter
     def archiver_manager(self, value):
-        if self.current_context:
-            self.current_context.archiver_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.archiver_manager = value
 
     @property
     def map_manager(self):
-        return self.current_context.map_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.map_manager if ctx else None
 
     @map_manager.setter
     def map_manager(self, value):
-        if self.current_context:
-            self.current_context.map_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.map_manager = value
 
     @property
     def map_overlay_manager(self):
-        return (
-            self.current_context.map_overlay_manager if self.current_context else None
-        )
+        ctx = self.active_context
+        return ctx.map_overlay_manager if ctx else None
 
     @map_overlay_manager.setter
     def map_overlay_manager(self, value):
-        if self.current_context:
-            self.current_context.map_overlay_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.map_overlay_manager = value
 
     @property
     def map_data_manager(self):
-        return self.current_context.map_data_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.map_data_manager if ctx else None
 
     @map_data_manager.setter
     def map_data_manager(self, value):
-        if self.current_context:
-            self.current_context.map_data_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.map_data_manager = value
 
     @property
     def docs_manager(self):
-        return self.current_context.docs_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.docs_manager if ctx else None
 
     @docs_manager.setter
     def docs_manager(self, value):
-        if self.current_context:
-            self.current_context.docs_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.docs_manager = value
 
     @property
     def repository_server_manager(self):
-        return (
-            self.current_context.repository_server_manager
-            if self.current_context
-            else None
-        )
+        ctx = self.active_context
+        return ctx.repository_server_manager if ctx else None
 
     @repository_server_manager.setter
     def repository_server_manager(self, value):
-        if self.current_context:
-            self.current_context.repository_server_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.repository_server_manager = value
 
     @property
     def nomadnet_manager(self):
-        return self.current_context.nomadnet_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.nomadnet_manager if ctx else None
 
     @nomadnet_manager.setter
     def nomadnet_manager(self, value):
-        if self.current_context:
-            self.current_context.nomadnet_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.nomadnet_manager = value
 
     @property
     def message_router(self):
-        return self.current_context.message_router if self.current_context else None
+        ctx = self.active_context
+        return ctx.message_router if ctx else None
 
     @message_router.setter
     def message_router(self, value):
-        if self.current_context:
-            self.current_context.message_router = value
+        ctx = self.active_context
+        if ctx:
+            ctx.message_router = value
 
     @property
     def telephone_manager(self):
-        return self.current_context.telephone_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.telephone_manager if ctx else None
 
     @telephone_manager.setter
     def telephone_manager(self, value):
-        if self.current_context:
-            self.current_context.telephone_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.telephone_manager = value
 
     @property
     def voicemail_manager(self):
-        return self.current_context.voicemail_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.voicemail_manager if ctx else None
 
     @voicemail_manager.setter
     def voicemail_manager(self, value):
-        if self.current_context:
-            self.current_context.voicemail_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.voicemail_manager = value
 
     @property
     def ringtone_manager(self):
-        return self.current_context.ringtone_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.ringtone_manager if ctx else None
 
     @ringtone_manager.setter
     def ringtone_manager(self, value):
-        if self.current_context:
-            self.current_context.ringtone_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.ringtone_manager = value
 
     @property
     def notification_sound_manager(self):
-        return (
-            self.current_context.notification_sound_manager
-            if self.current_context
-            else None
-        )
+        ctx = self.active_context
+        return ctx.notification_sound_manager if ctx else None
 
     @notification_sound_manager.setter
     def notification_sound_manager(self, value):
-        if self.current_context:
-            self.current_context.notification_sound_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.notification_sound_manager = value
 
     @property
     def rncp_handler(self):
-        return self.current_context.rncp_handler if self.current_context else None
+        ctx = self.active_context
+        return ctx.rncp_handler if ctx else None
 
     @rncp_handler.setter
     def rncp_handler(self, value):
-        if self.current_context:
-            self.current_context.rncp_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rncp_handler = value
 
     @property
     def rns_filesync_handler(self):
-        return (
-            self.current_context.rns_filesync_handler if self.current_context else None
-        )
+        ctx = self.active_context
+        return ctx.rns_filesync_handler if ctx else None
 
     @rns_filesync_handler.setter
     def rns_filesync_handler(self, value):
-        if self.current_context:
-            self.current_context.rns_filesync_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rns_filesync_handler = value
 
     @property
     def rnsh_manager(self):
-        return self.current_context.rnsh_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.rnsh_manager if ctx else None
 
     @rnsh_manager.setter
     def rnsh_manager(self, value):
-        if self.current_context:
-            self.current_context.rnsh_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rnsh_manager = value
 
     @property
     def rnx_manager(self):
-        return self.current_context.rnx_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.rnx_manager if ctx else None
 
     @rnx_manager.setter
     def rnx_manager(self, value):
-        if self.current_context:
-            self.current_context.rnx_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rnx_manager = value
 
     @property
     def rnstatus_handler(self):
-        return self.current_context.rnstatus_handler if self.current_context else None
+        ctx = self.active_context
+        return ctx.rnstatus_handler if ctx else None
 
     @rnstatus_handler.setter
     def rnstatus_handler(self, value):
-        if self.current_context:
-            self.current_context.rnstatus_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rnstatus_handler = value
 
     @property
     def rnpath_handler(self):
-        return self.current_context.rnpath_handler if self.current_context else None
+        ctx = self.active_context
+        return ctx.rnpath_handler if ctx else None
 
     @rnpath_handler.setter
     def rnpath_handler(self, value):
-        if self.current_context:
-            self.current_context.rnpath_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rnpath_handler = value
 
     @property
     def rnpath_trace_handler(self):
-        return (
-            self.current_context.rnpath_trace_handler if self.current_context else None
-        )
+        ctx = self.active_context
+        return ctx.rnpath_trace_handler if ctx else None
 
     @rnpath_trace_handler.setter
     def rnpath_trace_handler(self, value):
-        if self.current_context:
-            self.current_context.rnpath_trace_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rnpath_trace_handler = value
 
     @property
     def rnprobe_handler(self):
-        return self.current_context.rnprobe_handler if self.current_context else None
+        ctx = self.active_context
+        return ctx.rnprobe_handler if ctx else None
 
     @rnprobe_handler.setter
     def rnprobe_handler(self, value):
-        if self.current_context:
-            self.current_context.rnprobe_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rnprobe_handler = value
 
     @property
     def translator_handler(self):
-        return self.current_context.translator_handler if self.current_context else None
+        ctx = self.active_context
+        return ctx.translator_handler if ctx else None
 
     @translator_handler.setter
     def translator_handler(self, value):
-        if self.current_context:
-            self.current_context.translator_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.translator_handler = value
 
     @property
     def bot_handler(self):
-        return self.current_context.bot_handler if self.current_context else None
+        ctx = self.active_context
+        return ctx.bot_handler if ctx else None
 
     @bot_handler.setter
     def bot_handler(self, value):
-        if self.current_context:
-            self.current_context.bot_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.bot_handler = value
 
     @property
     def forwarding_manager(self):
-        return self.current_context.forwarding_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.forwarding_manager if ctx else None
 
     @forwarding_manager.setter
     def forwarding_manager(self, value):
-        if self.current_context:
-            self.current_context.forwarding_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.forwarding_manager = value
 
     @property
     def rrc_manager(self):
-        return self.current_context.rrc_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.rrc_manager if ctx else None
 
     @rrc_manager.setter
     def rrc_manager(self, value):
-        if self.current_context:
-            self.current_context.rrc_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rrc_manager = value
 
     @property
     def rrc_server_manager(self):
-        return self.current_context.rrc_server_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.rrc_server_manager if ctx else None
 
     @rrc_server_manager.setter
     def rrc_server_manager(self, value):
-        if self.current_context:
-            self.current_context.rrc_server_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rrc_server_manager = value
 
     @property
     def community_interfaces_manager(self):
-        return (
-            self.current_context.community_interfaces_manager
-            if self.current_context
-            else None
-        )
+        ctx = self.active_context
+        return ctx.community_interfaces_manager if ctx else None
 
     @community_interfaces_manager.setter
     def community_interfaces_manager(self, value):
-        if self.current_context:
-            self.current_context.community_interfaces_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.community_interfaces_manager = value
 
     @property
     def local_lxmf_destination(self):
-        return (
-            self.current_context.local_lxmf_destination
-            if self.current_context
-            else None
-        )
+        ctx = self.active_context
+        return ctx.local_lxmf_destination if ctx else None
 
     @local_lxmf_destination.setter
     def local_lxmf_destination(self, value):
-        if self.current_context:
-            self.current_context.local_lxmf_destination = value
+        ctx = self.active_context
+        if ctx:
+            ctx.local_lxmf_destination = value
 
     @property
     def auth_enabled(self):
@@ -1080,16 +1134,14 @@ class ReticulumMeshChat:
 
     @property
     def storage_path(self):
-        return (
-            self.current_context.storage_path
-            if self.current_context
-            else self.storage_dir
-        )
+        ctx = self.active_context
+        return ctx.storage_path if ctx else self.storage_dir
 
     @storage_path.setter
     def storage_path(self, value):
-        if self.current_context:
-            self.current_context.storage_path = value
+        ctx = self.active_context
+        if ctx:
+            ctx.storage_path = value
 
     def _check_bot_lifecycle(self) -> tuple[bool, str]:
         """Create, start, stop, and delete an Echo bot subprocess.
@@ -1435,16 +1487,19 @@ class ReticulumMeshChat:
 
     @property
     def database_path(self):
-        return self.current_context.database_path if self.current_context else None
+        ctx = self.active_context
+        return ctx.database_path if ctx else None
 
     @property
     def _identity_session_id(self):
-        return self.current_context.session_id if self.current_context else 0
+        ctx = self.active_context
+        return ctx.session_id if ctx else 0
 
     @_identity_session_id.setter
     def _identity_session_id(self, value):
-        if self.current_context:
-            self.current_context.session_id = value
+        ctx = self.active_context
+        if ctx:
+            ctx.session_id = value
 
     def get_public_path(self, filename=""):
         if self.public_dir_override:
