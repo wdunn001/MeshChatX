@@ -5504,7 +5504,7 @@ class ReticulumMeshChat:
             if isinstance(data, dict):
                 query = str(data.get("query") or "").strip()
             enabled = bool(self.config.rns_resolve_enabled.get())
-            resolver = self.config.rns_resolve_resolver_destination_hash.get()
+            resolver = self.config.rns_resolve_resolver_destination_hashes.get()
             loop = asyncio.get_running_loop()
             # the resolver round trip is a blocking RNS Link; keep it off the loop
             result = await loop.run_in_executor(
@@ -5961,11 +5961,11 @@ class ReticulumMeshChat:
             value = self._parse_bool(data["rns_resolve_enabled"])
             self.config.rns_resolve_enabled.set(value)
 
-        if "rns_resolve_resolver_destination_hash" in data:
-            value = data["rns_resolve_resolver_destination_hash"]
+        if "rns_resolve_resolver_destination_hashes" in data:
+            value = data["rns_resolve_resolver_destination_hashes"]
             if value is not None:
                 value = str(value).strip().lower() or None
-            self.config.rns_resolve_resolver_destination_hash.set(value)
+            self.config.rns_resolve_resolver_destination_hashes.set(value)
 
         if "lxmf_preferred_propagation_node_auto_select" in data:
             value = self._parse_bool(
@@ -7348,7 +7348,7 @@ class ReticulumMeshChat:
             "lxmf_preferred_propagation_node_auto_sync_interval_seconds": ctx.config.lxmf_preferred_propagation_node_auto_sync_interval_seconds.get(),
             "lxmf_preferred_propagation_node_last_synced_at": ctx.config.lxmf_preferred_propagation_node_last_synced_at.get(),
             "rns_resolve_enabled": ctx.config.rns_resolve_enabled.get(),
-            "rns_resolve_resolver_destination_hash": ctx.config.rns_resolve_resolver_destination_hash.get(),
+            "rns_resolve_resolver_destination_hashes": ctx.config.rns_resolve_resolver_destination_hashes.get(),
             "lxmf_user_icon_name": ctx.config.lxmf_user_icon_name.get(),
             "lxmf_user_icon_foreground_colour": ctx.config.lxmf_user_icon_foreground_colour.get(),
             "lxmf_user_icon_background_colour": ctx.config.lxmf_user_icon_background_colour.get(),

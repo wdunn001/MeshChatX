@@ -90,9 +90,12 @@ class ConfigManager:
             "rns_resolve_enabled",
             False,
         )
-        self.rns_resolve_resolver_destination_hash = self.StringConfig(
+        # Newline separated list of resolver destination hashes. A resolve
+        # answer is one resolver's view, never authoritative, so asking more
+        # than one and comparing is how a disagreement becomes visible.
+        self.rns_resolve_resolver_destination_hashes = self.StringConfig(
             self,
-            "rns_resolve_resolver_destination_hash",
+            "rns_resolve_resolver_destination_hashes",
             None,
         )
         self.lxmf_local_propagation_node_enabled = self.BoolConfig(

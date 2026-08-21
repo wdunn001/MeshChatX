@@ -34,20 +34,53 @@
 
             <div class="space-y-2">
                 <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    Resolver destination
+                    Resolvers
                 </div>
-                <input
-                    type="text"
-                    class="input-field font-mono"
-                    spellcheck="false"
-                    autocapitalize="off"
-                    autocomplete="off"
-                    placeholder="32 character hex destination hash of a resolver"
-                    :value="config.rns_resolve_resolver_destination_hash || ''"
-                    @change="onResolverChange"
-                />
+                <div v-if="resolverRows.length === 0" class="text-xs text-gray-500 dark:text-gray-400">
+                    No resolvers added. Names cannot be looked up until you add one.
+                </div>
+                <table v-else class="w-full text-xs">
+                    <tbody>
+                        <tr
+                            v-for="(hash, index) in resolverRows"
+                            :key="hash"
+                            class="border-b border-gray-100 dark:border-gray-700"
+                        >
+                            <td class="py-1 pr-2 font-mono text-gray-600 dark:text-gray-300">
+                                {{ hash }}
+                            </td>
+                            <td class="py-1 text-right">
+                                <button
+                                    class="btn btn-secondary btn-xs"
+                                    @click="removeResolver(index)"
+                                >
+                                    Remove
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="flex gap-2">
+                    <input
+                        v-model="newResolver"
+                        type="text"
+                        class="input-field font-mono flex-1"
+                        spellcheck="false"
+                        autocapitalize="off"
+                        autocomplete="off"
+                        placeholder="32 character hex destination hash of a resolver"
+                        @keyup.enter="addResolver"
+                    />
+                    <button class="btn btn-primary btn-xs" @click="addResolver">Add</button>
+                </div>
+                <p v-if="resolverError" class="text-xs text-red-600 dark:text-red-400">
+                    {{ resolverError }}
+                </p>
                 <p class="text-xs text-gray-600 dark:text-gray-400">
                     A resolver is only consulted when a typed name is not already pinned.
+                    An answer is one resolver's view of a name, not proof. With more than
+                    one added, the first two are asked and their answers compared, and a
+                    name they disagree about is reported instead of being resolved.
                 </p>
             </div>
 
@@ -97,9 +130,14 @@ export default {
     data() {
         return {
             pins: {},
+            newResolver: "",
+            resolverError: "",
         };
     },
     computed: {
+        resolverRows() {
+            return this.parseResolvers(this.config.rns_resolve_resolver_destination_hashes);
+        },
         pinRows() {
             return Object.keys(this.pins || {})
                 .sort()
@@ -118,12 +156,43 @@ export default {
                 value: !!event.target.checked,
             });
         },
-        onResolverChange(event) {
-            const value = (event.target.value || "").trim().toLowerCase() || null;
+        parseResolvers(text) {
+            const seen = [];
+            for (const part of String(text || "").split(/[\s,]+/)) {
+                const hash = part.trim().toLowerCase();
+                if (/^[0-9a-f]{32}$/.test(hash) && !seen.includes(hash)) {
+                    seen.push(hash);
+                }
+            }
+            return seen;
+        },
+        saveResolvers(list) {
             this.$emit("update-field", {
-                key: "rns_resolve_resolver_destination_hash",
-                value,
+                key: "rns_resolve_resolver_destination_hashes",
+                value: list.length ? list.join("\n") : null,
             });
+        },
+        addResolver() {
+            const hash = (this.newResolver || "").trim().toLowerCase();
+            if (!/^[0-9a-f]{32}$/.test(hash)) {
+                this.resolverError = "A resolver hash is 32 hexadecimal characters.";
+                return;
+            }
+            const list = this.resolverRows.slice();
+            if (list.includes(hash)) {
+                this.resolverError = "That resolver is already in the list.";
+                return;
+            }
+            list.push(hash);
+            this.saveResolvers(list);
+            this.newResolver = "";
+            this.resolverError = "";
+        },
+        removeResolver(index) {
+            const list = this.resolverRows.slice();
+            list.splice(index, 1);
+            this.saveResolvers(list);
+            this.resolverError = "";
         },
         async loadPins() {
             try {

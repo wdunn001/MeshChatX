@@ -2,7 +2,7 @@
 """Client for rns-resolve, which gives NomadNet addresses human-readable names.
 
 MeshChatX is a CLIENT here. A resolver is a separate service somewhere on the
-mesh; this module only knows how to ask one a question and what to do with the
+mesh. This module only knows how to ask one a question and what to do with the
 answer. There is no new dependency: the request rides an RNS Link and is packed
 with the msgpack copy that ships inside RNS, both of which MeshChatX already
 uses elsewhere.
@@ -188,13 +188,47 @@ def resolve_remote(resolver_hash, name_norm, timeout=DEFAULT_TIMEOUT):
             pass
 
 
-def resolve_candidates(query, enabled, resolver_hash, announces):
+# How many configured resolvers to actually ask. Each one costs a mesh round
+# trip, so this is capped. Two is enough to expose a disagreement, which is the
+# reason for asking more than one at all.
+MAX_RESOLVERS_QUERIED = 2
+
+
+def parse_resolver_hashes(value):
+    """Turn configured resolver text into a list of destination hashes.
+
+    Accepts newline, comma or space separated input, ignores blank lines and
+    anything that is not a 32 hex character hash, and removes duplicates while
+    keeping the configured order.
+    """
+    if isinstance(value, (list, tuple)):
+        items = list(value)
+    elif isinstance(value, str):
+        items = value.replace(",", " ").split()
+    else:
+        return []
+    out = []
+    for item in items:
+        h = str(item).strip().lower()
+        if HASH_RE.match(h) and h not in out:
+            out.append(h)
+    return out
+
+
+def resolve_candidates(query, enabled, resolver_hashes, announces):
     """Resolve a typed address for the UI. Never raises.
+
+    resolver_hashes may be a list or configured text. Up to
+    MAX_RESOLVERS_QUERIED of them are asked, and their answers are compared. A
+    resolve answer is one resolver's point of view, so two resolvers naming
+    different targets for the same name is reported rather than resolved.
 
     Returns one of:
       {"kind": "hash",       "hash": ...}                 already a hash
       {"kind": "pinned",     "hash": ..., "name": ...}    locally pinned
-      {"kind": "candidates", "name": ..., "registered": [], "announced": []}
+      {"kind": "candidates", "name": ..., "registered": [], "announced": [],
+       "resolvers": N}                                    N resolvers agreed
+      {"kind": "conflict",   "name": ..., "answers": [{"resolver":, "target":}]}
       {"kind": "miss",       "name": ...}
       {"kind": "disabled",   "name": ...}                 off or unconfigured
       {"kind": "error",      "name": ..., "message": ...}
@@ -216,22 +250,55 @@ def resolve_candidates(query, enabled, resolver_hash, announces):
     if pinned:
         return {"kind": "pinned", "hash": pinned, "name": name_norm}
 
-    if not enabled or not resolver_hash:
+    resolvers = parse_resolver_hashes(resolver_hashes)
+    if not enabled or not resolvers:
         return {"kind": "disabled", "name": name_norm}
 
-    try:
-        reply = resolve_remote(resolver_hash, name_norm)
-    except Exception as e:
-        return {"kind": "error", "name": name_norm, "message": str(e)}
+    replies = []
+    last_error = None
+    for resolver in resolvers[:MAX_RESOLVERS_QUERIED]:
+        try:
+            reply = resolve_remote(resolver, name_norm)
+        except Exception as e:
+            last_error = str(e)
+            continue
+        if not isinstance(reply, dict) or not reply.get("ok"):
+            if isinstance(reply, dict) and reply.get("error"):
+                last_error = str(reply["error"])
+            else:
+                last_error = "resolver returned no answer"
+            continue
+        replies.append((resolver, reply))
 
-    if not isinstance(reply, dict) or not reply.get("ok"):
-        message = "resolver returned no answer"
-        if isinstance(reply, dict) and reply.get("error"):
-            message = str(reply["error"])
-        return {"kind": "error", "name": name_norm, "message": message}
+    if not replies:
+        return {"kind": "error", "name": name_norm,
+                "message": last_error or "no resolver answered"}
 
-    registered = reply.get("registered") or []
-    announced = reply.get("announced") or []
+    # Compare what each resolver named as the registered target. Only an
+    # unambiguous single record is comparable; anything else falls through to
+    # the candidate list for the user to judge.
+    def sole_target(reply):
+        registered = reply.get("registered") or []
+        if len(registered) != 1:
+            return None
+        target = str(registered[0].get("target") or "").lower()
+        return target if HASH_RE.match(target) else None
+
+    targets = {}
+    for resolver, reply in replies:
+        target = sole_target(reply)
+        if target:
+            targets.setdefault(target, []).append(resolver)
+
+    if len(targets) > 1:
+        answers = []
+        for target, sources in targets.items():
+            for resolver in sources:
+                answers.append({"resolver": resolver, "target": target})
+        return {"kind": "conflict", "name": name_norm, "answers": answers}
+
+    registered = replies[0][1].get("registered") or []
+    announced = replies[0][1].get("announced") or []
     if not registered and not announced:
         return {"kind": "miss", "name": name_norm}
     return {
@@ -239,16 +306,17 @@ def resolve_candidates(query, enabled, resolver_hash, announces):
         "name": name_norm,
         "registered": registered,
         "announced": announced,
+        "resolvers": len(replies),
     }
 
 
-def browse_resolve(query, enabled, resolver_hash, announces):
+def browse_resolve(query, enabled, resolver_hashes, announces):
     """One shot name to hash for the browse path, or None to fall back.
 
     Only a registered record is accepted. An announced name is an unverified
     self claim, and this path has no UI in which to present that choice.
     """
-    result = resolve_candidates(query, enabled, resolver_hash, announces)
+    result = resolve_candidates(query, enabled, resolver_hashes, announces)
     kind = result.get("kind")
     if kind in ("hash", "pinned"):
         return result.get("hash")
