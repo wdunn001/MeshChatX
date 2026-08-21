@@ -31,7 +31,7 @@ def _validate_identifier(name: str, label: str = "identifier") -> str:
 
 
 class DatabaseSchema:
-    LATEST_VERSION = 55
+    LATEST_VERSION = 56
 
     def __init__(self, provider: DatabaseProvider):
         self.provider = provider
@@ -1758,4 +1758,30 @@ class DatabaseSchema:
             self._safe_execute(
                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_map_published_identity_map "
                 "ON map_published(identity_hash, map_id)",
+            )
+
+        if current_version < 56 and target_version >= 56:
+            # v56: let a custom display name also act as a resolved NomadNet
+            # name. name_norm holds the normalized name a resolver answered
+            # for, name_source records how it was learned ("resolver" or
+            # "manual"), and first_seen/last_verified support trust-on-first-use
+            # so a name that later points somewhere else is detectable rather
+            # than silently overwritten.
+            for column, coltype in (
+                ("name_norm", "TEXT"),
+                ("name_source", "TEXT"),
+                ("first_seen", "DATETIME"),
+                ("last_verified", "DATETIME"),
+            ):
+                self._safe_execute(
+                    "ALTER TABLE custom_destination_display_names "
+                    f"ADD COLUMN {column} {coltype}",
+                )
+            # Partial index: existing rows keep name_norm NULL and are
+            # unaffected, while a resolved name maps to exactly one hash.
+            self._safe_execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS "
+                "idx_custom_display_names_name_norm_unique "
+                "ON custom_destination_display_names(name_norm) "
+                "WHERE name_norm IS NOT NULL",
             )

@@ -5513,8 +5513,7 @@ class ReticulumMeshChat:
                 query,
                 enabled,
                 resolver,
-                self.reticulum_config_dir,
-                self.storage_dir,
+                self.database.announces,
             )
             return web.json_response(result)
 
@@ -5527,14 +5526,14 @@ class ReticulumMeshChat:
                 data = {}
             name = data.get("name") if isinstance(data, dict) else None
             hash_hex = data.get("hash") if isinstance(data, dict) else None
-            ok = rns_resolve_bridge.pin(name, hash_hex, self.storage_dir)
+            ok = rns_resolve_bridge.pin(name, hash_hex, self.database.announces)
             return web.json_response({"ok": bool(ok)})
 
         async def rns_resolve_pins_handler(_request):
             from meshchatx.src.backend import rns_resolve_bridge
 
             return web.json_response(
-                {"pins": rns_resolve_bridge.list_pins(self.storage_dir)},
+                {"pins": rns_resolve_bridge.list_pins(self.database.announces)},
             )
 
         app.router.add_post("/api/v1/resolve", rns_resolve_handler)
