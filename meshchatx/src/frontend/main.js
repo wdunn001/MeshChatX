@@ -354,9 +354,13 @@ const router = createRouter({
 
 window.api = createApiClient({
     onAuthError() {
-        if (router.currentRoute.value.name !== "auth") {
+        // An instance using accounts signs in on its own page. Sending someone
+        // to the single password page instead put them in a loop: that page
+        // redirects back here, and the next failed call sent them round again.
+        const signInPage = GlobalState.authMode === "accounts" ? "accounts" : "auth";
+        if (router.currentRoute.value.name !== signInPage) {
             GlobalState.authenticated = false;
-            router.push("/auth");
+            router.push("/" + signInPage);
         }
     },
 });

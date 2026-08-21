@@ -111,10 +111,18 @@ def create_multiuser_middleware(app):
             username = None
 
         context = resolve_context(app, identity_hash) if identity_hash else None
-        if context is None:
-            return await handler(request)
-
         account = rate_limit.account_for_request(app, username)
+
+        # Someone who is not signed in reaches only what is public. Checked
+        # before the context, because returning early when there is no context
+        # would let an unauthenticated caller straight through to the routes.
+        if context is None:
+            if permissions.allowed(None, request.method, request.path):
+                return await handler(request)
+            return web.json_response(
+                {"error": "Sign in to use this instance"},
+                status=401,
+            )
 
         # Deny by default. A role reaches what it is granted and nothing else,
         # so an endpoint nobody has classified is admin only.

@@ -12,6 +12,9 @@ export function applyAuthStatusToGlobalState(status) {
         return;
     }
     GlobalState.authEnabled = !!status.auth_enabled;
+    // Where an expired session should send someone back to. An instance using
+    // accounts has no single password page to offer them.
+    GlobalState.authMode = status.auth_mode || null;
     GlobalState.authenticated = !!status.authenticated;
     GlobalState.demoMode = !!status.demo_mode;
     if (typeof status.is_loopback_bind === "boolean") {
