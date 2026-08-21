@@ -28,7 +28,7 @@ export const SETTINGS_TABS = [
         id: "nomad",
         labelKey: "settings.tabs.nomad",
         descriptionKey: "settings.tabs.nomad_desc",
-        sections: ["archiver", "nomadRenderer"],
+        sections: ["archiver", "nomadRenderer", "naming"],
     },
     {
         id: "privacy",

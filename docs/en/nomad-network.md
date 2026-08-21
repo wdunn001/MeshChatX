@@ -19,6 +19,51 @@ Follow links inside pages to browse further paths on the same node. Download fil
 
 Rendering uses `NomadPageRenderer.js` with DOMPurify sanitization. Micron can use a JavaScript parser or optional Go WASM when `nomad_micron_wasm_enabled` is set.
 
+## Human-readable names
+
+Instead of a destination hash you can type a name such as `beacon`, provided a resolver is configured. Name resolution is off until you add one under **Settings → NomadNet**, in the Naming section. With it off, only hashes and names you have already pinned are used.
+
+Names are resolved by [rns-resolve](https://github.com/wdunn001/rns-resolve), a naming service that runs elsewhere on the mesh. MeshChatX is only a client of it, so nothing extra is installed and no resolver runs locally.
+
+What happens when you type an address:
+
+| Input                  | Result                                             |
+| ---------------------- | -------------------------------------------------- |
+| 32 hex character hash  | Used directly. Never sent to a resolver.           |
+| A name you have pinned | Answered from the local database. No mesh traffic. |
+| Any other name         | Looked up through your configured resolvers.       |
+
+A hash never reaches a resolver, so browsing by hash does not tell a resolver what you are reading.
+
+### What you see during a lookup
+
+A lookup crosses the mesh, so the browser shows the same progress line a page load uses, reading "Looking up the name with a resolver". A name that resolves goes straight on to loading the page.
+
+A name that does not resolve is reported as a name rather than as a bad address:
+
+| Message                               | Meaning                          |
+| ------------------------------------- | -------------------------------- |
+| No resolver knows this name           | The name is not registered.      |
+| Could not reach a resolver to look up | No configured resolver answered. |
+| Name resolution is off                | No resolver is configured yet.   |
+| More than one identity has registered | The name is contested, so it is not used. |
+
+The name in the message is the normalised form, so typing `RNS-Resolve` reports `rns-resolve`, which is what the resolver was asked for.
+
+### Pinned names
+
+The first time a name resolves, MeshChatX pins it to that destination and remembers it, so later lookups need no network. A pin is stored on the same row as the custom display name for that destination, so it lives with the name you may already have given the node.
+
+A pinned name is never repointed in the background. If a resolver later answers with a different destination for a name you have pinned, the pin stands.
+
+### Setting a second resolver
+
+The first resolver is asked. A second can be set as a fallback, used only when the first cannot be reached or does not know the name, so an ordinary lookup costs one mesh round trip.
+
+Every record is checked before it is used. A registration target is derived from the registrant's identity rather than declared by the resolver, so MeshChatX recomputes it and drops any record where the two disagree. A resolver cannot point a name at a destination its registrant did not control. Because records are combined rather than compared, adding a resolver widens what you can find and cannot stop a name from resolving.
+
+This proves a destination belongs to an identity. It does not prove that identity owns the name. When more than one identity has registered the same name, the name does not identify a single destination, so it is not used and you are told to browse by hash instead.
+
 ## Favourites and caching
 
 Save frequent nodes as favourites. Link caching (`nomadnet_cached_links`) speeds up repeat visits on slow links.
@@ -60,7 +105,7 @@ Pages are served at `/page/<name>` and files at `/file/<name>` on the node desti
 ## Browsing flow
 
 ```
-User enters destination hash
+User enters destination hash, or a name (see Human-readable names)
     |
     v
 RNS link request to /page/index.mu (or chosen path)

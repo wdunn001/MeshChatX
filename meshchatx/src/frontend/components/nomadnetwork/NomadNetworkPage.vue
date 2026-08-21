@@ -697,6 +697,7 @@ export default {
             nodePageContent: null,
             nodePageProgress: 0,
             nodePageLoadPhase: null,
+            lastNameFailure: null,
             pageLoadStartedAt: null,
             lastPageLoadDurationMs: null,
             lastPageContentBytes: null,
@@ -2340,6 +2341,94 @@ export default {
             // load the page
             this.onNodePageUrlClick(previousNodePagePath, null, null, true);
         },
+        async resolveNomadnetworkAddress(url) {
+            // Returns an address the url parser understands. A name that cannot
+            // be resolved is handed back untouched so the caller's existing
+            // handling (including the unsupported-url warning) is unchanged.
+            const raw = typeof url === "string" ? url.trim() : "";
+
+            // Already addressable: a bare destination hash, an absolute
+            // hash:path, a relative path, or anything carrying a scheme. A hash
+            // is never sent to a resolver.
+            if (
+                !raw ||
+                raw.includes(":") ||
+                raw.startsWith("/") ||
+                /^[0-9a-fA-F]{32}$/.test(raw)
+            ) {
+                return url;
+            }
+
+            // A lookup can cost two mesh round trips, so raise the same
+            // indicator a page load uses. Without it the browser looks idle
+            // while it waits on the resolver.
+            const wasLoading = this.isLoadingNodePage;
+            const previousPhase = this.nodePageLoadPhase;
+            this.isLoadingNodePage = true;
+            this.nodePageLoadPhase = "resolving_name";
+
+            let resolved = null;
+            let nameFailure = null;
+            let ambiguous = false;
+            try {
+                const api = window.api;
+                if (api) {
+                    const res = await api.post("/api/v1/resolve", { query: raw });
+                    const data = res.data || {};
+                    let hash = null;
+
+                    if (data.kind === "hash" || data.kind === "pinned") {
+                        hash = data.hash || null;
+                    } else if (data.kind === "candidates") {
+                        // Only act on an unambiguous registered record.
+                        // Announced names are unverified self claims, and more
+                        // than one registered record means the name does not
+                        // identify a single destination, so it is reported
+                        // rather than guessed at.
+                        const registered = data.registered || [];
+                        if (registered.length > 1) {
+                            ambiguous = true;
+                        }
+                        if (registered.length === 1 && registered[0].target) {
+                            hash = registered[0].target;
+                            try {
+                                // trust on first use, so the next lookup is local
+                                await api.post("/api/v1/resolve/pin", {
+                                    name: data.name,
+                                    hash: hash,
+                                });
+                            } catch (e) {
+                                // a failed pin only costs another lookup later
+                            }
+                        }
+                    }
+
+                    if (hash) {
+                        this.selectedNode = this.resolveNodeForHash(hash);
+                        resolved = `${hash}:${this.defaultNodePagePath}`;
+                    } else {
+                        // A well formed name that did not resolve is not a
+                        // malformed address, so remember why for the message.
+                        nameFailure = {
+                            name: data.name || raw,
+                            kind: ambiguous ? "ambiguous" : data.kind,
+                        };
+                    }
+                }
+            } catch (e) {
+                resolved = null;
+            } finally {
+                // The page load that follows a successful lookup owns the
+                // indicator from here. Put it back when nothing resolved, so a
+                // failed lookup does not leave a spinner running.
+                if (!resolved) {
+                    this.isLoadingNodePage = wasLoading;
+                    this.nodePageLoadPhase = previousPhase;
+                }
+            }
+            this.lastNameFailure = resolved ? null : nameFailure;
+            return resolved || url;
+        },
         parseNomadnetworkUrl: function (url) {
             // parse relative urls
             if (url.startsWith(":")) {
@@ -2448,6 +2537,12 @@ export default {
 
                 fieldData = inputValues;
             }
+
+            // rns-resolve: turn a human-readable name into an address before any
+            // parsing happens. Every entry point reaches this method (address bar,
+            // the open-url dialog, in-page links, tab bootstrap), so resolution
+            // lives here once instead of being repeated per caller.
+            url = await this.resolveNomadnetworkAddress(url);
 
             const httpHref = typeof url === "string" ? LinkUtils.httpUrlHrefOrNull(url.trim()) : null;
             if (httpHref) {
@@ -2590,6 +2685,23 @@ export default {
 
                 // navigate to node page
                 this.loadNodePage(destinationHash, parsedUrl.path, fieldData, addToHistory, useCache, navOptions);
+                return;
+            }
+
+            // A name that reached a resolver and came back with nothing is a
+            // different problem from an address that does not parse.
+            const failure = this.lastNameFailure;
+            if (failure && failure.name) {
+                const messageKey =
+                    failure.kind === "disabled"
+                        ? "nomadnet.name_resolution_off"
+                        : failure.kind === "error"
+                          ? "nomadnet.name_resolver_unreachable"
+                          : failure.kind === "ambiguous"
+                            ? "nomadnet.name_ambiguous"
+                            : "nomadnet.name_not_found";
+                ToastUtils.warning(this.$t(messageKey) + failure.name);
+                this.lastNameFailure = null;
                 return;
             }
 

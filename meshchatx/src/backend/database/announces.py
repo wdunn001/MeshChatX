@@ -246,6 +246,79 @@ class AnnounceDAO:
             "SELECT destination_hash, display_name FROM custom_destination_display_names",
         )
 
+    # Resolved NomadNet names (rns-resolve)
+    #
+    # These reuse the custom display name table rather than introducing a
+    # second naming store. A row with name_norm set is a name the user has
+    # pinned for a destination, either from a resolver answer or by hand.
+    # destination_hash is already UNIQUE and a partial unique index covers
+    # name_norm, so the mapping is one to one in both directions.
+    def get_hash_for_name(self, name_norm):
+        row = self.provider.fetchone(
+            "SELECT destination_hash FROM custom_destination_display_names "
+            "WHERE name_norm = ?",
+            (name_norm,),
+        )
+        return row["destination_hash"] if row else None
+
+    def get_name_pin(self, name_norm):
+        return self.provider.fetchone(
+            "SELECT destination_hash, display_name, name_norm, name_source, "
+            "first_seen, last_verified FROM custom_destination_display_names "
+            "WHERE name_norm = ?",
+            (name_norm,),
+        )
+
+    def pin_resolved_name(self, name_norm, destination_hash, source="resolver"):
+        """Pin name_norm to destination_hash (trust on first use).
+
+        Returns True when the pin is in place, False when name_norm is
+        already pinned to a DIFFERENT destination. The caller decides what a
+        changed answer means; this never silently repoints a name.
+        """
+        existing = self.get_hash_for_name(name_norm)
+        if existing is not None and existing != destination_hash:
+            return False
+        now = datetime.now(UTC)
+        self.provider.execute(
+            """
+            INSERT INTO custom_destination_display_names
+                (destination_hash, display_name, name_norm, name_source,
+                 first_seen, last_verified, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(destination_hash) DO UPDATE SET
+                name_norm = EXCLUDED.name_norm,
+                name_source = EXCLUDED.name_source,
+                first_seen = COALESCE(
+                    custom_destination_display_names.first_seen,
+                    EXCLUDED.first_seen
+                ),
+                last_verified = EXCLUDED.last_verified,
+                display_name = COALESCE(
+                    custom_destination_display_names.display_name,
+                    EXCLUDED.display_name
+                ),
+                updated_at = EXCLUDED.updated_at
+        """,
+            (destination_hash, name_norm, name_norm, source,
+             now, now, now, now),
+        )
+        return True
+
+    def unpin_resolved_name(self, name_norm):
+        self.provider.execute(
+            "UPDATE custom_destination_display_names "
+            "SET name_norm = NULL, name_source = NULL WHERE name_norm = ?",
+            (name_norm,),
+        )
+
+    def get_all_resolved_name_pins(self):
+        return self.provider.fetchall(
+            "SELECT name_norm, destination_hash, name_source, first_seen, "
+            "last_verified FROM custom_destination_display_names "
+            "WHERE name_norm IS NOT NULL",
+        )
+
     # Favourites
     def upsert_favourite(self, destination_hash, display_name, aspect):
         from meshchatx.src.backend.favourite_display_names import (
