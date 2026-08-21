@@ -44,6 +44,23 @@ export async function fetchAuthStatus(api, options = {}) {
  * @returns {{ allow: true } | { redirect: string }}
  */
 export function authNavigationTargetForStatus(to, status) {
+    // An instance serving several people signs in by account, so an
+    // unauthenticated visitor goes to the accounts page rather than to the
+    // single password page, which would ask for a password nobody has.
+    if (status.auth_mode === "accounts") {
+        if (status.authenticated) {
+            return to.name === "accounts" ? { redirect: "/" } : { allow: true };
+        }
+        return to.name === "accounts" ? { allow: true } : { redirect: "/accounts" };
+    }
+    // First run has not chosen how this instance is used yet.
+    if (!status.auth_mode && Array.isArray(status.auth_modes_available)) {
+        if (status.auth_modes_available.includes("accounts")) {
+            return to.name === "setup-mode"
+                ? { allow: true }
+                : { redirect: "/setup-mode" };
+        }
+    }
     if (!status.auth_enabled) {
         return { allow: true };
     }

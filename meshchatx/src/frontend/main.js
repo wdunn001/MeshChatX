@@ -65,6 +65,18 @@ const router = createRouter({
     history: createWebHashHistory(),
     routes: [
         {
+            name: "accounts",
+            path: "/accounts",
+            component: () => import("./components/auth/AccountsAuthPage.vue"),
+            meta: { isPage: true },
+        },
+        {
+            name: "setup-mode",
+            path: "/setup-mode",
+            component: () => import("./components/auth/SetupModePage.vue"),
+            meta: { isPage: true },
+        },
+        {
             name: "auth",
             path: "/auth",
             component: () => import("./components/auth/AuthPage.vue"),

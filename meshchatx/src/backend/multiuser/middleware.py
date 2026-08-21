@@ -15,11 +15,36 @@ import os
 from aiohttp import web
 from aiohttp_session import get_session
 
+from meshchatx.src.backend.multiuser import permissions, rate_limit
 from meshchatx.src.backend.request_context import (
     reset_active_context,
     set_active_context,
 )
 from meshchatx.src.path_utils import is_path_within_dir
+
+# Paths that spend the machine's interfaces rather than just its CPU. Each one
+# puts bytes on a radio or a hub that everyone signed in to this instance is
+# sharing, so they are counted against the account rather than the address.
+# Limiting is enforced here rather than in the routes themselves, so core code
+# carries none of it and the whole mechanism disappears when the feature is
+# off. Matched on method and prefix, because several carry an identity in the
+# path.
+_LIMITED_PATHS = (
+    ("POST", "/api/v1/lxmf-messages/send", "send_message"),
+    ("GET", "/api/v1/announce", "announce"),
+    ("POST", "/api/v1/telephone/call/", "call"),
+    ("POST", "/api/v1/filesync/upload", "file_transfer"),
+    ("POST", "/api/v1/filesync/start", "file_transfer"),
+)
+
+
+def _limited_service(method: str, path: str):
+    for wanted_method, prefix, service in _LIMITED_PATHS:
+        if method != wanted_method:
+            continue
+        if path == prefix or path.startswith(prefix):
+            return service
+    return None
 
 
 def resolve_context(app, identity_hash):
@@ -78,14 +103,48 @@ def create_multiuser_middleware(app):
         try:
             session = await get_session(request)
             identity_hash = session.get("identity_hash")
+            username = session.get("username")
         except Exception:
             # A session that cannot be read is not a reason to refuse the
             # request. It simply is not bound to anyone.
             identity_hash = None
+            username = None
 
         context = resolve_context(app, identity_hash) if identity_hash else None
         if context is None:
             return await handler(request)
+
+        account = rate_limit.account_for_request(app, username)
+
+        # Deny by default. A role reaches what it is granted and nothing else,
+        # so an endpoint nobody has classified is admin only.
+        role = account["role"] if account is not None else None
+        if not permissions.allowed(role, request.method, request.path):
+            return web.json_response(
+                {
+                    "error": "This instance is shared, and your account does "
+                    "not have access to that.",
+                    "required_role": permissions.required_role(
+                        request.method,
+                        request.path,
+                    ),
+                },
+                status=403,
+            )
+
+        service = _limited_service(request.method, request.path)
+        if service is not None:
+            if not rate_limit.check(request, app.storage_dir, service, account):
+                wait = rate_limit.retry_after(app.storage_dir, service)
+                return web.json_response(
+                    {
+                        "error": "This instance is shared, and you have used "
+                        "your share of it for the moment. Try again shortly.",
+                        "service": service,
+                    },
+                    status=429,
+                    headers={"Retry-After": str(wait)} if wait else None,
+                )
 
         token = set_active_context(context)
         try:

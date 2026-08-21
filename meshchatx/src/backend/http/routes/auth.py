@@ -209,6 +209,80 @@ def register_auth_routes(routes, app):
     # auth status
 
     # auth status
+    def _auth_mode_status(app):
+        """How this instance decides who may use it, for the first run flow.
+
+        Reported on every status call so the setup flow can ask the question
+        rather than assuming the single password answer, and so a client can
+        tell an instance with accounts from one without.
+        """
+        from meshchatx.src.backend.multiuser import (
+            auth_mode,
+            available_modes,
+        )
+
+        import sys
+
+        # Served means an instance other people connect to: headless, and not
+        # a packaged desktop build, which is also headless but is one person's
+        # machine.
+        served = bool(getattr(app, "_headless", False)) and not getattr(
+            sys,
+            "frozen",
+            False,
+        )
+        return {
+            "auth_mode": auth_mode(app.storage_dir),
+            "auth_modes_available": list(available_modes(served)),
+        }
+
+    @routes.post("/api/v1/auth/mode")
+    async def auth_mode_set(request):
+        """Choose how this instance decides who may use it. First run only.
+
+        Refused once a mode is set, so it cannot be changed from outside by
+        anyone who reaches the page later. An operator changes it by editing
+        app_security.json and restarting.
+        """
+        import sys
+
+        from meshchatx.src.backend.multiuser import (
+            auth_mode,
+            available_modes,
+            save_auth_mode,
+        )
+
+        if auth_mode(app.storage_dir) is not None:
+            return web.json_response(
+                {"error": "This instance is already set up"},
+                status=409,
+            )
+        try:
+            data = await request.json()
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+            return web.json_response({"error": "Invalid request"}, status=400)
+        mode = data.get("mode") if isinstance(data, dict) else None
+
+        served = bool(getattr(app, "_headless", False)) and not getattr(
+            sys,
+            "frozen",
+            False,
+        )
+        if mode not in available_modes(served):
+            return web.json_response(
+                {"error": "That is not a choice this build offers"},
+                status=400,
+            )
+
+        save_auth_mode(app.storage_dir, mode)
+        return web.json_response(
+            {
+                "message": "Setup mode saved",
+                "auth_mode": mode,
+                "restart_required": mode == "accounts",
+            },
+        )
+
     @routes.get("/api/v1/auth/status")
     async def auth_status(request):
         if not app.current_context or not app.current_context.running:
@@ -244,6 +318,7 @@ def register_auth_routes(routes, app):
                     "demo_mode": app.demo_mode,
                     "altcha_enabled": app.altcha_enabled,
                     "auth_page_hint": app.auth_page_hint,
+                    **_auth_mode_status(app),
                 },
             )
         except Exception as e:
