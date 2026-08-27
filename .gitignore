@@ -186,3 +186,9 @@ scripts/private/
 
 # Generated at build time (scripts/bake_build_meta.js)
 meshchatx/src/_build_meta_baked.py
+
+# Vendored eSpeak NG for bundled voicemail TTS. cx_setup.py copies bin/ into the
+# frozen build; the binaries are otherwise caught by the *.exe / *.dll rules
+# above, so re-include them here (the espeak-ng-data files track normally).
+!bin/espeak-ng.exe
+!bin/libespeak-ng.dll

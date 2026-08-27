@@ -45,6 +45,7 @@ class VoicemailManager:
         # stabilization delay for voicemail greeting
         self.STABILIZATION_DELAY = 1.0
 
+        self.espeak_data_path = None
         self.espeak_path = self._find_espeak()
         self.has_espeak = self.espeak_path is not None
 
@@ -75,13 +76,19 @@ class VoicemailManager:
         return None
 
     def _find_espeak(self):
-        # Try bundled first
-        bundled = self._find_bundled_binary("espeak-ng")
-        if bundled:
-            return bundled
-        bundled = self._find_bundled_binary("espeak")
-        if bundled:
-            return bundled
+        # Try bundled first. This espeak-ng build does not locate espeak-ng-data
+        # relative to its own exe, so when we run the bundled binary we remember
+        # the bundled data dir and pass it via ESPEAK_DATA_PATH in
+        # generate_greeting. A system install carries its own default data path.
+        for bundled_name in ("espeak-ng", "espeak"):
+            bundled = self._find_bundled_binary(bundled_name)
+            if bundled:
+                data_dir = os.path.join(
+                    os.path.dirname(bundled), "espeak-ng-data"
+                )
+                if os.path.isdir(data_dir):
+                    self.espeak_data_path = data_dir
+                return bundled
 
         # Try standard name first
         path = shutil.which("espeak-ng")
@@ -136,11 +143,16 @@ class VoicemailManager:
                 text,
             ]
 
+            run_env = None
+            if self.espeak_data_path:
+                run_env = os.environ.copy()
+                run_env["ESPEAK_DATA_PATH"] = self.espeak_data_path
+
             RNS.log(
                 f"Voicemail: Generating greeting with command: {' '.join(cmd)}",
                 RNS.LOG_DEBUG,
             )
-            subprocess.run(cmd, check=True)
+            subprocess.run(cmd, check=True, env=run_env)
 
             return self.convert_to_greeting(wav_path)
         finally:
