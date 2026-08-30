@@ -1,15 +1,13 @@
 # SPDX-License-Identifier: 0BSD
 
-"""Oracle: ALTCHA proof of work gates the multi-user sign up and sign in routes.
+"""Oracle: an LXMF stamp gates the multi-user sign up and sign in routes.
 
-Registration on a multi-user instance is deliberately open to anyone who can
-reach it, so ALTCHA is the primary defence against a bot scripting its way
-through account creation, and a second layer against a bot brute-forcing
-passwords on sign in. These tests exist because that enforcement did not
-exist at all before it was wired into
-meshchatx/src/backend/multiuser/routes.py: the challenge endpoint worked,
-verify_altcha_submission() worked, but nothing on the multi-user account
-routes ever called it, so turning the feature on gated nothing.
+Replaces test_multiuser_altcha.py now that these routes are gated by an
+LXMF stamp (the proof of work this project's LXMF stack already carries)
+instead of ALTCHA. Registration on a multi-user instance is deliberately
+open to anyone who can reach it, so this is the primary defence against a
+bot scripting its way through account creation, and a second layer against
+a bot brute-forcing passwords on sign in.
 """
 
 from __future__ import annotations
@@ -19,35 +17,39 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from aiohttp.test_utils import TestClient, TestServer
+from LXMF.LXStamper import generate_stamp
 
-from meshchatx.src.backend.altcha_auth import (
-    ALTCHA_INVALID_CODE,
-    ALTCHA_REPLAYED_CODE,
-    reset_used_altcha_challenges,
-    verify_altcha_submission,
-)
 from meshchatx.src.backend.multiuser import rate_limit
+from meshchatx.src.backend.stamp_auth import (
+    STAMP_INVALID_CODE,
+    STAMP_REPLAYED_CODE,
+    create_stamp_challenge_dict,
+    reset_used_stamps,
+)
 from tests.backend.conftest import fetch_api_csrf_headers
 from tests.backend.demo_http_support import build_test_aio_app
-from tests.backend.test_altcha_oracle import _solved_payload_b64
 
 _TEST_SECRET = "multiuser-test-secret-32chars-min!!"
 
 _MULTIUSER_ENV = {"MESHCHAT_MULTIUSER": "1"}
-_ALTCHA_ENV = {
+# Low cost/expand_rounds so tests solve in milliseconds; see
+# test_stamp_auth_oracle.py for the same choice and reasoning.
+_STAMP_ENV = {
     **_MULTIUSER_ENV,
-    "MESHCHAT_ALTCHA_ENABLED": "1",
-    "MESHCHAT_ALTCHA_HMAC_KEY": _TEST_SECRET,
+    "MESHCHAT_STAMP_AUTH_ENABLED": "1",
+    "MESHCHAT_STAMP_AUTH_HMAC_KEY": _TEST_SECRET,
+    "MESHCHAT_STAMP_AUTH_COST": "4",
+    "MESHCHAT_STAMP_AUTH_EXPAND_ROUNDS": "5",
 }
 
 
 @pytest.fixture(autouse=True)
-def _isolated_altcha_and_rate_limit_state():
+def _isolated_stamp_and_rate_limit_state():
     """Both are process-local module state. Tests must not see each other's."""
-    reset_used_altcha_challenges()
+    reset_used_stamps()
     rate_limit.reset()
     yield
-    reset_used_altcha_challenges()
+    reset_used_stamps()
     rate_limit.reset()
 
 
@@ -78,17 +80,27 @@ async def _build_multiuser_client(mock_app):
     return TestServer(aio_app)
 
 
-async def _register(client, headers, username="alice", password="correct-horse", altcha=None):
+def _solved_stamp_proof() -> dict:
+    """A real, freshly solved stamp proof, signed under _TEST_SECRET."""
+    with patch.dict(os.environ, _STAMP_ENV, clear=False):
+        challenge = create_stamp_challenge_dict()
+    material = bytes.fromhex(challenge["material"])
+    stamp, _value = generate_stamp(material, challenge["cost"], challenge["expand_rounds"])
+    assert stamp is not None
+    return {**challenge, "stamp": stamp.hex()}
+
+
+async def _register(client, headers, username="alice", password="correct-horse", stamp_proof=None):
     body = {"username": username, "password": password}
-    if altcha is not None:
-        body["altcha"] = altcha
+    if stamp_proof is not None:
+        body["stamp_proof"] = stamp_proof
     return await client.post("/api/v1/multiuser/register", json=body, headers=headers)
 
 
-async def _login(client, headers, username="alice", password="correct-horse", altcha=None):
+async def _login(client, headers, username="alice", password="correct-horse", stamp_proof=None):
     body = {"username": username, "password": password}
-    if altcha is not None:
-        body["altcha"] = altcha
+    if stamp_proof is not None:
+        body["stamp_proof"] = stamp_proof
     return await client.post("/api/v1/multiuser/login", json=body, headers=headers)
 
 
@@ -99,46 +111,31 @@ async def _account_count(client, headers) -> int:
     return data["accounts"]
 
 
-# --- Unit level: replay protection lives in altcha_auth itself -------------
-
-
-def test_altcha_verify_rejects_replayed_payload():
-    with patch.dict(os.environ, {"MESHCHAT_ALTCHA_HMAC_KEY": _TEST_SECRET}, clear=False):
-        payload = _solved_payload_b64(_TEST_SECRET)
-
-        first_ok, first_code = verify_altcha_submission(payload)
-        assert first_ok is True
-        assert first_code is None
-
-        second_ok, second_code = verify_altcha_submission(payload)
-        assert second_ok is False
-        assert second_code == ALTCHA_REPLAYED_CODE
-
-
 # --- Registration ------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_register_rejected_without_altcha_when_configured(mock_app):
+async def test_register_rejected_without_stamp_when_configured(mock_app):
     server = await _build_multiuser_client(mock_app)
     async with TestClient(server) as client:
-        with patch.dict(os.environ, _ALTCHA_ENV, clear=False):
+        with patch.dict(os.environ, _STAMP_ENV, clear=False):
             headers = await fetch_api_csrf_headers(client)
             response = await _register(client, headers)
             assert response.status == 400
             body = await response.json()
-            assert body.get("code") == ALTCHA_INVALID_CODE
+            assert body.get("code") == STAMP_INVALID_CODE
             assert await _account_count(client, headers) == 0
 
 
 @pytest.mark.asyncio
-async def test_register_rejected_with_tampered_altcha_when_configured(mock_app):
+async def test_register_rejected_with_tampered_stamp_when_configured(mock_app):
     server = await _build_multiuser_client(mock_app)
     async with TestClient(server) as client:
-        with patch.dict(os.environ, _ALTCHA_ENV, clear=False):
+        with patch.dict(os.environ, _STAMP_ENV, clear=False):
             headers = await fetch_api_csrf_headers(client)
-            bad_solution = _solved_payload_b64(_TEST_SECRET)[:-4] + "XXXX"
-            response = await _register(client, headers, altcha=bad_solution)
+            proof = _solved_stamp_proof()
+            proof["cost"] = 1  # claim an easier challenge than was signed
+            response = await _register(client, headers, stamp_proof=proof)
             assert response.status == 400
             body = await response.json()
             assert body.get("code") not in (None, "")
@@ -146,13 +143,13 @@ async def test_register_rejected_with_tampered_altcha_when_configured(mock_app):
 
 
 @pytest.mark.asyncio
-async def test_register_succeeds_with_valid_altcha_solution(mock_app):
+async def test_register_succeeds_with_valid_stamp(mock_app):
     server = await _build_multiuser_client(mock_app)
     async with TestClient(server) as client:
-        with patch.dict(os.environ, _ALTCHA_ENV, clear=False):
+        with patch.dict(os.environ, _STAMP_ENV, clear=False):
             headers = await fetch_api_csrf_headers(client)
-            solved = _solved_payload_b64(_TEST_SECRET)
-            response = await _register(client, headers, altcha=solved)
+            proof = _solved_stamp_proof()
+            response = await _register(client, headers, stamp_proof=proof)
             assert response.status == 200
             body = await response.json()
             assert body.get("message") == "Welcome"
@@ -160,8 +157,8 @@ async def test_register_succeeds_with_valid_altcha_solution(mock_app):
 
 
 @pytest.mark.asyncio
-async def test_register_does_not_require_altcha_when_not_configured(mock_app):
-    """No MESHCHAT_ALTCHA_* env set: single-user and dev installs are unaffected."""
+async def test_register_does_not_require_stamp_when_not_configured(mock_app):
+    """No MESHCHAT_STAMP_AUTH_* env set: single-user and dev installs are unaffected."""
     server = await _build_multiuser_client(mock_app)
     async with TestClient(server) as client:
         headers = await fetch_api_csrf_headers(client)
@@ -172,21 +169,21 @@ async def test_register_does_not_require_altcha_when_not_configured(mock_app):
 
 
 @pytest.mark.asyncio
-async def test_register_replayed_altcha_solution_is_rejected(mock_app):
-    """A solved challenge is good for exactly one account, not two."""
+async def test_register_replayed_stamp_is_rejected(mock_app):
+    """A solved stamp is good for exactly one account, not two."""
     server = await _build_multiuser_client(mock_app)
     async with TestClient(server) as client:
-        with patch.dict(os.environ, _ALTCHA_ENV, clear=False):
+        with patch.dict(os.environ, _STAMP_ENV, clear=False):
             headers = await fetch_api_csrf_headers(client)
-            solved = _solved_payload_b64(_TEST_SECRET)
+            proof = _solved_stamp_proof()
 
-            first = await _register(client, headers, username="alice", altcha=solved)
+            first = await _register(client, headers, username="alice", stamp_proof=proof)
             assert first.status == 200
 
-            second = await _register(client, headers, username="mallory", altcha=solved)
+            second = await _register(client, headers, username="mallory", stamp_proof=proof)
             assert second.status == 400
             body = await second.json()
-            assert body.get("code") == ALTCHA_REPLAYED_CODE
+            assert body.get("code") == STAMP_REPLAYED_CODE
 
             assert await _account_count(client, headers) == 1
 
@@ -195,31 +192,31 @@ async def test_register_replayed_altcha_solution_is_rejected(mock_app):
 
 
 @pytest.mark.asyncio
-async def test_login_rejected_without_altcha_when_configured(mock_app):
+async def test_login_rejected_without_stamp_when_configured(mock_app):
     server = await _build_multiuser_client(mock_app)
     async with TestClient(server) as client:
-        with patch.dict(os.environ, _ALTCHA_ENV, clear=False):
+        with patch.dict(os.environ, _STAMP_ENV, clear=False):
             headers = await fetch_api_csrf_headers(client)
             response = await _login(client, headers, username="nobody")
             assert response.status == 400
             body = await response.json()
-            assert body.get("code") == ALTCHA_INVALID_CODE
+            assert body.get("code") == STAMP_INVALID_CODE
 
 
 @pytest.mark.asyncio
-async def test_login_does_not_require_altcha_when_not_configured(mock_app):
+async def test_login_does_not_require_stamp_when_not_configured(mock_app):
     server = await _build_multiuser_client(mock_app)
     async with TestClient(server) as client:
         headers = await fetch_api_csrf_headers(client)
         response = await _login(client, headers, username="nobody")
-        # Gets past the ALTCHA gate (a no-op here) and fails on credentials,
+        # Gets past the stamp gate (a no-op here) and fails on credentials,
         # rather than being blocked at 400 for a missing solution.
         assert response.status == 401
 
 
 @pytest.mark.asyncio
-async def test_login_replayed_altcha_solution_is_rejected_before_credentials(mock_app):
-    """A solved challenge used once for sign in cannot be reused for another attempt.
+async def test_login_replayed_stamp_is_rejected_before_credentials(mock_app):
+    """A solved stamp used once for sign in cannot be reused for another attempt.
 
     Uses an unknown username on purpose: the first call is expected to reach
     (and fail) the password check, which is what proves the valid solution
@@ -228,16 +225,16 @@ async def test_login_replayed_altcha_solution_is_rejected_before_credentials(moc
     """
     server = await _build_multiuser_client(mock_app)
     async with TestClient(server) as client:
-        with patch.dict(os.environ, _ALTCHA_ENV, clear=False):
+        with patch.dict(os.environ, _STAMP_ENV, clear=False):
             headers = await fetch_api_csrf_headers(client)
-            solved = _solved_payload_b64(_TEST_SECRET)
+            proof = _solved_stamp_proof()
 
-            first = await _login(client, headers, username="nobody", altcha=solved)
+            first = await _login(client, headers, username="nobody", stamp_proof=proof)
             assert first.status == 401
             first_body = await first.json()
             assert "code" not in first_body
 
-            second = await _login(client, headers, username="nobody", altcha=solved)
+            second = await _login(client, headers, username="nobody", stamp_proof=proof)
             assert second.status == 400
             second_body = await second.json()
-            assert second_body.get("code") == ALTCHA_REPLAYED_CODE
+            assert second_body.get("code") == STAMP_REPLAYED_CODE

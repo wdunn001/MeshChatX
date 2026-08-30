@@ -4344,14 +4344,19 @@
         "set_password": "Passwort festlegen",
         "login": "Anmelden",
         "passwords_mismatch": "Passwörter stimmen nicht überein",
-        "altcha_required": "Schließen Sie zuerst die Verifizierungsaufgabe ab",
+        "stamp_required": "Schließen Sie zuerst die Verifizierungsaufgabe ab",
+        "stamp_solving": "Solving proof of work...",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
         "status_check_failed": "Authentifizierungsstatus konnte nicht geprüft werden",
         "failed": "Authentifizierung fehlgeschlagen"
     },
     "accounts": {
-        "altcha_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
-        "altcha_failed": "That verification failed. Try again.",
-        "altcha_unavailable": "The verification widget did not load. Reload the page and try again."
+        "stamp_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again."
     },
     "post_install": {
         "windows_screen_security_title": "Windows-Bildschirmsicherheit aktivieren?",

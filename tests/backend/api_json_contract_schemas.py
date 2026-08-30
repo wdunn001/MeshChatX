@@ -201,7 +201,7 @@ _SERVER_BIND_STATUS_SCHEMA: dict = {
 
 _DEMO_PUBLIC_STATUS_FIELDS: dict = {
     "demo_mode": {"type": "boolean"},
-    "altcha_enabled": {"type": "boolean"},
+    "stamp_auth_enabled": {"type": "boolean"},
     "auth_page_hint": {"type": ["string", "null"]},
 }
 
@@ -346,23 +346,21 @@ AUTH_STATUS_SCHEMA: dict = {
             "enum": ["http", "starting", "rns", "identity", "ready", "failed"],
         },
         "error": {"type": "string"},
+        "auth_mode": {"type": ["string", "null"]},
+        "auth_modes_available": {"type": "array", "items": {"type": "string"}},
         **_DEMO_PUBLIC_STATUS_FIELDS,
     },
     "additionalProperties": False,
 }
 
-ALTCHA_CHALLENGE_SCHEMA: dict = {
+STAMP_CHALLENGE_SCHEMA: dict = {
     "type": "object",
-    "required": ["parameters", "signature"],
+    "required": ["material", "cost", "expand_rounds", "expires_at", "signature"],
     "properties": {
-        "parameters": {
-            "type": "object",
-            "required": ["algorithm"],
-            "properties": {
-                "algorithm": {"type": "string"},
-            },
-            "additionalProperties": True,
-        },
+        "material": {"type": "string"},
+        "cost": {"type": "integer"},
+        "expand_rounds": {"type": "integer"},
+        "expires_at": {"type": "integer"},
         "signature": {"type": "string"},
     },
     "additionalProperties": True,

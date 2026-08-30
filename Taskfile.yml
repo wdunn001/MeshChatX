@@ -511,7 +511,7 @@ tasks:
     build:frontend:
         aliases: [build:fe]
         desc: Build frontend assets
-        deps: [deps:frontend, build:visualiser-wasm]
+        deps: [deps:frontend, build:visualiser-wasm, build:lxmf-stamper-wasm]
         cmds:
             - "{{.NPM}} run build-frontend"
 
@@ -520,6 +520,12 @@ tasks:
         desc: Build Go network visualiser WASM into frontend public vendor/
         cmds:
             - node scripts/build-visualiser-wasm.mjs
+
+    build:lxmf-stamper-wasm:
+        aliases: [build:stamp-wasm]
+        desc: Build the LXMF stamp (proof-of-work) WASM module into frontend public vendor/
+        cmds:
+            - node scripts/build-lxmf-stamper-wasm.mjs
 
     test:visualiser-wasm:
         aliases: [test:viz-wasm]

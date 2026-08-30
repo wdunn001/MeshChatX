@@ -40,25 +40,17 @@
                         :disabled="busy"
                     />
                     <p v-if="mode === 'register'" class="text-xs text-gray-500 dark:text-gray-400">
-                        At least 8 characters. There is no way to recover it, so
-                        pick something you will remember.
+                        At least 8 characters. There is no way to recover it, so pick something you will remember.
                     </p>
                 </div>
 
-                <div v-if="altchaEnabled" class="space-y-1">
-                    <altcha-widget
-                        ref="altchaWidget"
-                        :challenge="altchaChallengeUrl"
-                        auto="off"
-                        name="altcha"
-                        @statechange="onAltchaStateChange"
-                    ></altcha-widget>
-                    <p
-                        v-if="altchaPending"
-                        class="text-xs text-gray-500 dark:text-gray-400"
-                        role="status"
-                    >
-                        {{ $t("accounts.altcha_pending") }}
+                <div v-if="stampAuthEnabled && solving" class="space-y-1">
+                    <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                        <div class="h-full w-1/3 animate-pulse rounded-full bg-blue-500"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400" role="status">
+                        {{ $t("accounts.stamp_pending") }}
+                        {{ $t("accounts.stamp_progress", solveProgressParams) }}
                     </p>
                 </div>
 
@@ -71,11 +63,7 @@
 
             <div v-if="registrationOpen" class="text-center">
                 <button class="text-sm text-blue-600 dark:text-blue-400" @click="toggleMode">
-                    {{
-                        mode === "register"
-                            ? "I already have an account"
-                            : "I need an account"
-                    }}
+                    {{ mode === "register" ? "I already have an account" : "I need an account" }}
                 </button>
             </div>
             <p v-else-if="mode === 'login'" class="text-center text-xs text-gray-500 dark:text-gray-400">
@@ -86,7 +74,7 @@
 </template>
 
 <script>
-import "altcha";
+import { solveStampChallenge } from "../../js/stampChallenge.js";
 
 export default {
     name: "AccountsAuthPage",
@@ -99,19 +87,23 @@ export default {
             busy: false,
             registrationOpen: true,
             // Registration is deliberately open to anyone who reaches this
-            // instance, so ALTCHA is the main defence against a bot scripting
-            // sign up, and a second layer against brute-forcing sign in.
-            // Whether it applies at all comes from the server: this mirrors
-            // AuthPage.vue, which reads the same altcha_enabled flag off
-            // /api/v1/auth/status rather than a flag invented for this page.
-            altchaEnabled: false,
-            altchaChallengeUrl: "/api/v1/auth/altcha/challenge",
-            altchaState: "unverified",
+            // instance, so the stamp is the main defence against a bot
+            // scripting sign up, and a second layer against brute-forcing
+            // sign in. Whether it applies at all comes from the server: this
+            // mirrors AuthPage.vue, which reads the same stamp_auth_enabled
+            // flag off /api/v1/auth/status rather than a flag invented for
+            // this page.
+            stampAuthEnabled: false,
+            solving: false,
+            solveProgress: { attempts: 0, elapsedMs: 0 },
         };
     },
     computed: {
-        altchaPending() {
-            return this.altchaState === "verifying";
+        solveProgressParams() {
+            return {
+                attempts: String(this.solveProgress.attempts),
+                seconds: (this.solveProgress.elapsedMs / 1000).toFixed(1),
+            };
         },
     },
     async mounted() {
@@ -123,8 +115,8 @@ export default {
                 const [multiuserResponse, authResponse] = await Promise.all([
                     window.api.get("/api/v1/multiuser/status"),
                     // Read only, and not fatal to sign in if it fails: the
-                    // widget just stays off, same as when ALTCHA is not
-                    // configured at all.
+                    // stamp step just stays off, same as when stamp auth is
+                    // not configured at all.
                     window.api.get("/api/v1/auth/status").catch(() => null),
                 ]);
                 const status = multiuserResponse.data || {};
@@ -137,7 +129,7 @@ export default {
                 if (status.signed_in) {
                     this.$router.push("/");
                 }
-                this.altchaEnabled = authResponse?.data?.altcha_enabled === true;
+                this.stampAuthEnabled = authResponse?.data?.stamp_auth_enabled === true;
             } catch (e) {
                 // A status that cannot be read should not block sign in.
             }
@@ -146,37 +138,23 @@ export default {
             this.mode = this.mode === "register" ? "login" : "register";
             this.error = "";
         },
-        onAltchaStateChange(event) {
-            this.altchaState = event?.detail?.state || "unverified";
-        },
-        resetAltcha() {
-            this.altchaState = "unverified";
-            const widget = this.$refs.altchaWidget;
-            if (widget && typeof widget.reset === "function") {
-                widget.reset();
-            }
-        },
-        // Solves the proof of work challenge and returns the solved payload,
-        // or null with this.error already set. Driven here rather than
-        // through the widget's own auto="onsubmit" form interception, so the
-        // pending state and the failure message both go through this page's
-        // own conventions instead of the widget's built-in ones.
-        async solveAltcha() {
-            const widget = this.$refs.altchaWidget;
-            if (!widget || typeof widget.verify !== "function") {
-                this.error = this.$t("accounts.altcha_unavailable");
-                return null;
-            }
+        // Fetches a fresh challenge and solves it client side (in wasm),
+        // reporting real progress (attempts tried, time elapsed) rather
+        // than a spinner, since solving can visibly take a few seconds on
+        // a phone. Returns the stamp_proof body field, or null with
+        // this.error already set.
+        async solveStamp() {
+            this.solving = true;
+            this.solveProgress = { attempts: 0, elapsedMs: 0 };
             try {
-                const result = await widget.verify();
-                if (!result || !result.payload) {
-                    this.error = this.$t("accounts.altcha_failed");
-                    return null;
-                }
-                return result.payload;
+                return await solveStampChallenge("/api/v1/auth/stamp/challenge", (progress) => {
+                    this.solveProgress = progress;
+                });
             } catch (e) {
-                this.error = this.$t("accounts.altcha_failed");
+                this.error = this.$t("accounts.stamp_unavailable");
                 return null;
+            } finally {
+                this.solving = false;
             }
         },
         async submit() {
@@ -187,22 +165,19 @@ export default {
             }
             this.busy = true;
 
-            let altchaPayload = null;
-            if (this.altchaEnabled) {
-                altchaPayload = await this.solveAltcha();
-                if (!altchaPayload) {
+            let stampProof = null;
+            if (this.stampAuthEnabled) {
+                stampProof = await this.solveStamp();
+                if (!stampProof) {
                     this.busy = false;
                     return;
                 }
             }
 
-            const path =
-                this.mode === "register"
-                    ? "/api/v1/multiuser/register"
-                    : "/api/v1/multiuser/login";
+            const path = this.mode === "register" ? "/api/v1/multiuser/register" : "/api/v1/multiuser/login";
             const body = { username: this.username, password: this.password };
-            if (altchaPayload) {
-                body.altcha = altchaPayload;
+            if (stampProof) {
+                body.stamp_proof = stampProof;
             }
             try {
                 await window.api.post(path, body);
@@ -217,11 +192,9 @@ export default {
                 // The server only marks a solution spent once it accepts it
                 // as valid, whether or not the request goes on to succeed for
                 // some other reason (a taken username, for one). Reusing it
-                // on a retry would be rejected as a replay, so get a fresh
-                // challenge rather than let the next attempt fail confusingly.
-                if (this.altchaEnabled) {
-                    this.resetAltcha();
-                }
+                // on a retry would be rejected as a replay; a fresh submit
+                // solves a new challenge automatically, so nothing extra is
+                // needed here beyond letting the next submit try again.
             }
         },
     },

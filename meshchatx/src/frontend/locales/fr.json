@@ -4344,14 +4344,19 @@
         "set_password": "Définir le mot de passe",
         "login": "Connexion",
         "passwords_mismatch": "Les mots de passe ne correspondent pas",
-        "altcha_required": "Terminez d'abord le défi de vérification",
+        "stamp_required": "Terminez d'abord le défi de vérification",
+        "stamp_solving": "Solving proof of work...",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
         "status_check_failed": "Impossible de vérifier l'état d'authentification",
         "failed": "Échec de l'authentification"
     },
     "accounts": {
-        "altcha_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
-        "altcha_failed": "That verification failed. Try again.",
-        "altcha_unavailable": "The verification widget did not load. Reload the page and try again."
+        "stamp_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again."
     },
     "post_install": {
         "windows_screen_security_title": "Activer la sécurité d’écran Windows ?",

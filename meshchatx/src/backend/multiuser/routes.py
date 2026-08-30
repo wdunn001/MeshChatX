@@ -24,7 +24,7 @@ from meshchatx.src.backend.multiuser.accounts import (
     AccountStore,
     normalize_username,
 )
-from meshchatx.src.backend.altcha_auth import require_altcha_payload
+from meshchatx.src.backend.stamp_auth import require_stamp_payload
 from meshchatx.src.backend.csrf import rotate_session_csrf_token
 from meshchatx.src.backend.multiuser import rate_limit
 from meshchatx.src.backend.multiuser.middleware import resolve_context
@@ -94,10 +94,10 @@ def register_multiuser_routes(routes, app):
 
         # Registration is deliberately open to anyone who can reach this
         # instance, so this is the primary defence against a bot scripting
-        # its way through sign up. A no-op when ALTCHA is not configured.
-        altcha_blocked = await require_altcha_payload(request, data)
-        if altcha_blocked is not None:
-            return altcha_blocked
+        # its way through sign up. A no-op when stamp auth is not configured.
+        stamp_blocked = await require_stamp_payload(request, data)
+        if stamp_blocked is not None:
+            return stamp_blocked
 
         try:
             username = normalize_username(data.get("username"))
@@ -152,10 +152,10 @@ def register_multiuser_routes(routes, app):
 
         # Same proof of work gate as sign up, so a bot cannot use this path
         # to brute-force a password once it has a username. A no-op when
-        # ALTCHA is not configured.
-        altcha_blocked = await require_altcha_payload(request, data)
-        if altcha_blocked is not None:
-            return altcha_blocked
+        # stamp auth is not configured.
+        stamp_blocked = await require_stamp_payload(request, data)
+        if stamp_blocked is not None:
+            return stamp_blocked
 
         if not rate_limit.check(request, app.storage_dir, "login"):
             wait = rate_limit.retry_after(app.storage_dir, "login")

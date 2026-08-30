@@ -4344,14 +4344,19 @@
         "set_password": "设置密码",
         "login": "登录",
         "passwords_mismatch": "两次输入的密码不一致",
-        "altcha_required": "请先完成验证挑战",
+        "stamp_required": "请先完成验证挑战",
+        "stamp_solving": "Solving proof of work...",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
         "status_check_failed": "无法检查身份验证状态",
         "failed": "身份验证失败"
     },
     "accounts": {
-        "altcha_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
-        "altcha_failed": "That verification failed. Try again.",
-        "altcha_unavailable": "The verification widget did not load. Reload the page and try again."
+        "stamp_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again."
     },
     "post_install": {
         "windows_screen_security_title": "启用 Windows 屏幕安全？",

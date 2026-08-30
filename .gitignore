@@ -154,6 +154,11 @@ meshchatx/src/frontend/public/vendor/visualiser-wasm/wasm_exec.js
 
 .gocache/
 .gotmp/
+
+# lxmf-stamper-wasm build output; the vendored artifacts under
+# meshchatx/src/frontend/public/vendor/lxmf-stamper-wasm/ ARE committed
+# (see lxmf-stamper-wasm/README.md), only the cargo target/ dir is not.
+lxmf-stamper-wasm/target/
 .vitest-cache/
 
 .hypothesis

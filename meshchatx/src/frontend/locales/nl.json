@@ -4344,14 +4344,19 @@
         "set_password": "Wachtwoord instellen",
         "login": "Inloggen",
         "passwords_mismatch": "Wachtwoorden komen niet overeen",
-        "altcha_required": "Voltooi eerst de verificatie-uitdaging",
+        "stamp_required": "Voltooi eerst de verificatie-uitdaging",
+        "stamp_solving": "Solving proof of work...",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
         "status_check_failed": "Authenticatiestatus kon niet worden gecontroleerd",
         "failed": "Authenticatie mislukt"
     },
     "accounts": {
-        "altcha_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
-        "altcha_failed": "That verification failed. Try again.",
-        "altcha_unavailable": "The verification widget did not load. Reload the page and try again."
+        "stamp_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again."
     },
     "post_install": {
         "windows_screen_security_title": "Windows-schermbeveiliging inschakelen?",

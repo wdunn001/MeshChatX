@@ -1,0 +1,6 @@
+{
+  "version": "0.1.0",
+  "wasm": "sha384-hla/ZATAqxk8iAkdgS2yB61kOeSYQYgpqkIkJIODlmBj/PkxjzIF1LO0GPYX7JUZ",
+  "js": "sha384-awvRXsOFtb0NCxkeS8pCIs7jVSDBXDZhi6XKSNm0wlPD42Q9db/4Lj3mJKrW2pjw",
+  "source": "lxmf-stamper-wasm/ (repo root), built via task build:lxmf-stamper-wasm"
+}

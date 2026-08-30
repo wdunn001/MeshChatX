@@ -1,11 +1,41 @@
 import { mount } from "@vue/test-utils";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import AccountsAuthPage from "../../meshchatx/src/frontend/components/auth/AccountsAuthPage.vue";
+import { solveStampChallenge } from "../../meshchatx/src/frontend/js/stampChallenge.js";
+
+// The real solveStampChallenge fetches a challenge over the network and
+// solves it in wasm, neither of which is available (or wanted) in jsdom.
+// Mocking the whole module keeps the test at the same level the old altcha
+// tests stubbed the <altcha-widget> element's verify()/reset() methods:
+// this component's own gating and error handling, not the solver itself.
+vi.mock("../../meshchatx/src/frontend/js/stampChallenge.js", () => ({
+    solveStampChallenge: vi.fn(),
+}));
 
 const accountsI18n = {
-    "accounts.altcha_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
-    "accounts.altcha_failed": "That verification failed. Try again.",
-    "accounts.altcha_unavailable": "The verification widget did not load. Reload the page and try again.",
+    "accounts.stamp_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
+    "accounts.stamp_progress": "{attempts} attempts, {seconds}s so far",
+    "accounts.stamp_failed": "That proof of work failed. Try again.",
+    "accounts.stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
+};
+
+function translate(key, params) {
+    let text = accountsI18n[key] || key;
+    if (params) {
+        for (const [k, v] of Object.entries(params)) {
+            text = text.replace(`{${k}}`, v);
+        }
+    }
+    return text;
+}
+
+const SOLVED_PROOF = {
+    material: "aa".repeat(32),
+    cost: 17,
+    expand_rounds: 25,
+    expires_at: 9999999999,
+    signature: "sig",
+    stamp: "bb".repeat(32),
 };
 
 describe("AccountsAuthPage.vue", () => {
@@ -13,7 +43,7 @@ describe("AccountsAuthPage.vue", () => {
     let routerMock;
 
     // Both /api/v1/multiuser/status and /api/v1/auth/status are read on
-    // mount (the latter for the altcha_enabled flag, the same channel
+    // mount (the latter for the stamp_auth_enabled flag, the same channel
     // AuthPage.vue reads for the single-user page), so the mock has to
     // branch on the requested path rather than return one fixed body.
     const respondFor = (multiuserBody, authBody) => (path) => {
@@ -28,7 +58,7 @@ describe("AccountsAuthPage.vue", () => {
             get: vi.fn(
                 respondFor(
                     { registration_open: true, accounts: 1, signed_in: false },
-                    { altcha_enabled: false },
+                    { stamp_auth_enabled: false },
                 ),
             ),
             post: vi.fn().mockResolvedValue({ data: { message: "Welcome" } }),
@@ -41,6 +71,8 @@ describe("AccountsAuthPage.vue", () => {
             value: { href: "" },
             writable: true,
         });
+
+        solveStampChallenge.mockReset();
     });
 
     afterEach(() => {
@@ -53,131 +85,121 @@ describe("AccountsAuthPage.vue", () => {
             global: {
                 mocks: {
                     $router: routerMock,
-                    $t: (key) => accountsI18n[key] || key,
-                },
-                config: {
-                    compilerOptions: {
-                        isCustomElement: (tag) => tag === "altcha-widget",
-                    },
+                    $t: translate,
                 },
             },
         });
     };
 
-    // Stubs verify()/reset() on the real "altcha" custom element rather than
-    // swapping out $refs.altchaWidget for a fake object: the real PoW/network
-    // work neither is available in jsdom, but Vue re-associates the ref with
-    // this same DOM node on every re-render (a reactive change such as
-    // "busy" is enough), which would silently undo a wholesale $refs
-    // replacement before a later await (e.g. resetAltcha() after the POST)
-    // gets to read it. Patching the element's own methods survives that,
-    // since it is still the very same node.
-    const stubAltchaWidget = (wrapper, { verify, reset } = {}) => {
-        const el = wrapper.find("altcha-widget").element;
-        // The real element defines verify/reset as getter-only accessors on
-        // its prototype, so a plain assignment throws; defineProperty shadows
-        // them with an own, writable property instead.
-        Object.defineProperty(el, "verify", {
-            configurable: true,
-            value: verify || vi.fn().mockResolvedValue({ payload: "solved-payload" }),
-        });
-        Object.defineProperty(el, "reset", {
-            configurable: true,
-            value: reset || vi.fn(),
-        });
-        return el;
-    };
-
-    it("does not render the widget or gate submission when altcha is not configured", async () => {
+    it("does not solve a stamp or gate submission when stamp auth is not configured", async () => {
         const wrapper = mountPage();
         await wrapper.vm.$nextTick();
         await new Promise((resolve) => setTimeout(resolve, 0));
 
-        expect(wrapper.vm.altchaEnabled).toBe(false);
-        expect(wrapper.find("altcha-widget").exists()).toBe(false);
+        expect(wrapper.vm.stampAuthEnabled).toBe(false);
 
         wrapper.vm.mode = "login";
         wrapper.vm.username = "alice";
         wrapper.vm.password = "correct-horse";
         await wrapper.vm.submit();
 
+        expect(solveStampChallenge).not.toHaveBeenCalled();
         expect(axiosMock.post).toHaveBeenCalledWith("/api/v1/multiuser/login", {
             username: "alice",
             password: "correct-horse",
         });
     });
 
-    it("renders the widget and gates submission when the server reports altcha is enabled", async () => {
+    it("solves a stamp and attaches it to the request when the server reports stamp auth is enabled", async () => {
         axiosMock.get = vi.fn(
             respondFor(
                 { registration_open: true, accounts: 0, signed_in: false },
-                { altcha_enabled: true },
+                { stamp_auth_enabled: true },
             ),
         );
         window.api = axiosMock;
+        solveStampChallenge.mockResolvedValue(SOLVED_PROOF);
 
         const wrapper = mountPage();
         await wrapper.vm.$nextTick();
         await new Promise((resolve) => setTimeout(resolve, 0));
         await wrapper.vm.$nextTick();
 
-        expect(wrapper.vm.altchaEnabled).toBe(true);
-        expect(wrapper.find("altcha-widget").exists()).toBe(true);
+        expect(wrapper.vm.stampAuthEnabled).toBe(true);
         // Nobody has an account yet, so the page defaults to registration.
         expect(wrapper.vm.mode).toBe("register");
-
-        const verify = vi.fn().mockResolvedValue({ payload: "solved-payload" });
-        stubAltchaWidget(wrapper, { verify });
 
         wrapper.vm.username = "alice";
         wrapper.vm.password = "correct-horse";
         await wrapper.vm.submit();
 
-        expect(verify).toHaveBeenCalled();
+        expect(solveStampChallenge).toHaveBeenCalledWith(
+            "/api/v1/auth/stamp/challenge",
+            expect.any(Function),
+        );
         expect(axiosMock.post).toHaveBeenCalledWith("/api/v1/multiuser/register", {
             username: "alice",
             password: "correct-horse",
-            altcha: "solved-payload",
+            stamp_proof: SOLVED_PROOF,
         });
     });
 
-    it("shows a pending state while the widget is verifying", async () => {
+    it("shows a pending state with live progress while solving", async () => {
         axiosMock.get = vi.fn(
             respondFor(
                 { registration_open: true, accounts: 1, signed_in: false },
-                { altcha_enabled: true },
+                { stamp_auth_enabled: true },
             ),
         );
         window.api = axiosMock;
+
+        let releaseSolve;
+        let reportProgress;
+        solveStampChallenge.mockImplementation((_url, onProgress) => {
+            reportProgress = onProgress;
+            return new Promise((resolve) => {
+                releaseSolve = () => resolve(SOLVED_PROOF);
+            });
+        });
 
         const wrapper = mountPage();
         await wrapper.vm.$nextTick();
         await new Promise((resolve) => setTimeout(resolve, 0));
         await wrapper.vm.$nextTick();
 
-        expect(wrapper.vm.altchaPending).toBe(false);
-        wrapper.vm.onAltchaStateChange({ detail: { state: "verifying" } });
+        expect(wrapper.vm.solving).toBe(false);
+
+        wrapper.vm.username = "alice";
+        wrapper.vm.password = "correct-horse";
+        const submitPromise = wrapper.vm.submit();
         await wrapper.vm.$nextTick();
 
-        expect(wrapper.vm.altchaPending).toBe(true);
+        expect(wrapper.vm.solving).toBe(true);
+        reportProgress({ attempts: 12345, elapsedMs: 2300 });
+        await wrapper.vm.$nextTick();
+
         expect(wrapper.text()).toContain("Proving you're not a robot");
+        expect(wrapper.text()).toContain("12345 attempts, 2.3s so far");
+
+        releaseSolve();
+        await submitPromise;
+        expect(wrapper.vm.solving).toBe(false);
     });
 
-    it("blocks submission and surfaces a readable error when verification fails", async () => {
+    it("blocks submission and surfaces a readable error when the wasm solver is unavailable", async () => {
         axiosMock.get = vi.fn(
             respondFor(
                 { registration_open: true, accounts: 1, signed_in: false },
-                { altcha_enabled: true },
+                { stamp_auth_enabled: true },
             ),
         );
         window.api = axiosMock;
+        solveStampChallenge.mockRejectedValue(new Error("stamp_wasm_unavailable"));
 
         const wrapper = mountPage();
         await wrapper.vm.$nextTick();
         await new Promise((resolve) => setTimeout(resolve, 0));
         await wrapper.vm.$nextTick();
-
-        stubAltchaWidget(wrapper, { verify: vi.fn().mockResolvedValue(null) });
 
         wrapper.vm.mode = "login";
         wrapper.vm.username = "alice";
@@ -185,44 +207,43 @@ describe("AccountsAuthPage.vue", () => {
         await wrapper.vm.submit();
 
         expect(axiosMock.post).not.toHaveBeenCalled();
-        expect(wrapper.vm.error).toBe("That verification failed. Try again.");
+        expect(wrapper.vm.error).toBe(
+            "Proof of work could not run in this browser. Reload the page and try again.",
+        );
         expect(wrapper.vm.busy).toBe(false);
     });
 
-    it("resets the widget so a rejected attempt is not retried with a spent solution", async () => {
+    it("solves a fresh stamp on retry rather than reusing a rejected (spent) one", async () => {
         axiosMock.get = vi.fn(
             respondFor(
                 { registration_open: true, accounts: 1, signed_in: false },
-                { altcha_enabled: true },
+                { stamp_auth_enabled: true },
             ),
         );
         axiosMock.post = vi.fn().mockRejectedValue({
-            response: { data: { error: "ALTCHA verification failed", code: "altcha_replayed" } },
+            response: { data: { error: "Stamp verification failed", code: "stamp_replayed" } },
         });
         window.api = axiosMock;
+        solveStampChallenge.mockResolvedValue(SOLVED_PROOF);
 
         const wrapper = mountPage();
         await wrapper.vm.$nextTick();
         await new Promise((resolve) => setTimeout(resolve, 0));
         await wrapper.vm.$nextTick();
 
-        // Mode is already "login" for this mock (accounts: 1), so nothing
-        // reactive changes between stubbing the ref and calling submit: a
-        // render in between would let Vue's own ref binding put the real
-        // widget element back before resetAltcha() runs.
-        expect(wrapper.vm.mode).toBe("login");
-        const reset = vi.fn();
-        stubAltchaWidget(wrapper, {
-            verify: vi.fn().mockResolvedValue({ payload: "solved-payload" }),
-            reset,
-        });
-
+        wrapper.vm.mode = "login";
         wrapper.vm.username = "alice";
         wrapper.vm.password = "correct-horse";
         await wrapper.vm.submit();
 
-        expect(wrapper.vm.error).toBe("ALTCHA verification failed");
-        expect(reset).toHaveBeenCalled();
+        expect(wrapper.vm.error).toBe("Stamp verification failed");
         expect(wrapper.vm.busy).toBe(false);
+
+        await wrapper.vm.submit();
+
+        // Every submit fetches and solves its own challenge, so a retry
+        // after a rejected (already-spent) solution automatically gets a
+        // new one rather than needing an explicit reset step.
+        expect(solveStampChallenge).toHaveBeenCalledTimes(2);
     });
 });

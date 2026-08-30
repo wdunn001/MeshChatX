@@ -7,11 +7,11 @@ from __future__ import annotations
 import re
 
 from tests.backend.api_json_contract_schemas import (
-    ALTCHA_CHALLENGE_SCHEMA,
     API_V1_APP_INFO_ENVELOPE_SCHEMA,
     API_V1_STATUS_SCHEMA,
     AUTH_STATUS_SCHEMA,
     SELF_TEST_SCHEMA,
+    STAMP_CHALLENGE_SCHEMA,
     TELEPHONE_CONTACT_CHECK_SCHEMA,
     TELEPHONE_CONTACTS_LIST_SCHEMA,
     TELEPHONE_RINGTONE_STATUS_SCHEMA,
@@ -149,8 +149,8 @@ HTTP_JSON_GET_CONTRACTS: tuple[HttpJsonContract, ...] = (
     HttpJsonContract("GET", "/api/v1/auth/csrf", CSRF_ENVELOPE_SCHEMA),
     HttpJsonContract(
         "GET",
-        "/api/v1/auth/altcha/challenge",
-        ALTCHA_CHALLENGE_SCHEMA,
+        "/api/v1/auth/stamp/challenge",
+        STAMP_CHALLENGE_SCHEMA,
         allow_statuses=(200, 404, 503),
         alt_schemas=(ERROR_ENVELOPE_SCHEMA,),
     ),
