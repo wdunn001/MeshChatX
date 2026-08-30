@@ -4348,6 +4348,11 @@
         "status_check_failed": "Authentifizierungsstatus konnte nicht geprüft werden",
         "failed": "Authentifizierung fehlgeschlagen"
     },
+    "accounts": {
+        "altcha_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
+        "altcha_failed": "That verification failed. Try again.",
+        "altcha_unavailable": "The verification widget did not load. Reload the page and try again."
+    },
     "post_install": {
         "windows_screen_security_title": "Windows-Bildschirmsicherheit aktivieren?",
         "windows_screen_security_desc": "MeshChatX kann den Windows-Inhaltsschutz nutzen (dasselbe DRM-ähnliche Display-Flag wie Medien-Apps), damit Screenshots, Recorder und Windows Recall das App-Fenster nicht erfassen. Später änderbar unter Einstellungen -> Datenschutz.",

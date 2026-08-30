@@ -24,6 +24,7 @@ from meshchatx.src.backend.multiuser.accounts import (
     AccountStore,
     normalize_username,
 )
+from meshchatx.src.backend.altcha_auth import require_altcha_payload
 from meshchatx.src.backend.csrf import rotate_session_csrf_token
 from meshchatx.src.backend.multiuser import rate_limit
 from meshchatx.src.backend.multiuser.middleware import resolve_context
@@ -91,6 +92,13 @@ def register_multiuser_routes(routes, app):
         if not isinstance(data, dict):
             return web.json_response({"error": "Invalid request"}, status=400)
 
+        # Registration is deliberately open to anyone who can reach this
+        # instance, so this is the primary defence against a bot scripting
+        # its way through sign up. A no-op when ALTCHA is not configured.
+        altcha_blocked = await require_altcha_payload(request, data)
+        if altcha_blocked is not None:
+            return altcha_blocked
+
         try:
             username = normalize_username(data.get("username"))
         except AccountError as exc:
@@ -141,6 +149,13 @@ def register_multiuser_routes(routes, app):
             return web.json_response({"error": "Invalid request"}, status=400)
         if not isinstance(data, dict):
             return web.json_response({"error": "Invalid request"}, status=400)
+
+        # Same proof of work gate as sign up, so a bot cannot use this path
+        # to brute-force a password once it has a username. A no-op when
+        # ALTCHA is not configured.
+        altcha_blocked = await require_altcha_payload(request, data)
+        if altcha_blocked is not None:
+            return altcha_blocked
 
         if not rate_limit.check(request, app.storage_dir, "login"):
             wait = rate_limit.retry_after(app.storage_dir, "login")
