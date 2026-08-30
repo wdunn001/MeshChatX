@@ -527,6 +527,18 @@ tasks:
         cmds:
             - node scripts/build-lxmf-stamper-wasm.mjs
 
+    test:lxmf-stamper-wasm:
+        aliases: [test:stamp-wasm]
+        desc: Run lxmf-stamper-wasm's hermetic tests (known-answer vectors cross-validated against live Python LXStamper)
+        dir: lxmf-stamper-wasm
+        cmds:
+            - cargo test --release
+
+    check:lxmf-stamper-drift:
+        desc: Network check that ratspeak/rsLXMF's stamper.rs hasn't changed at the pinned commit lxmf-stamper-wasm's copy was synced from. Not part of the default gate (needs network); run manually before relying on the copy, or periodically.
+        cmds:
+            - node scripts/check-lxmf-stamper-drift.mjs
+
     test:visualiser-wasm:
         aliases: [test:viz-wasm]
         desc: Run Go unit tests for visualiser-wasm

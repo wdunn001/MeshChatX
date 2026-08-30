@@ -187,3 +187,141 @@ pub fn verify_stamp(material: &[u8], stamp: &[u8], cost: u8, expand_rounds: usiz
     let workblock = stamp_workblock(material, expand_rounds);
     stamp_valid(&s, cost, &workblock)
 }
+
+// ---------------------------------------------------------------------
+// Drift-detection safety net.
+//
+// This crate keeps a synced copy of rsLXMF's stamper algorithm rather than
+// depending on `lxmf-core` directly (see README.md for the measured reasons
+// why: `lxmf-core` cannot be fetched as a bare git/registry dependency at
+// all today, since rsLXMF's workspace Cargo.toml wires its `rns-*` deps via
+// relative `../rsReticulum` paths -- a `cargo build` from outside that
+// sibling checkout layout fails with "no matching package named
+// `rns-crypto`", independent of wasm size).
+//
+// Because there is no live dependency to catch upstream algorithm changes
+// automatically, this module hardcodes known-answer vectors that were
+// cross-validated bidirectionally against the live `LXMF.LXStamper` Python
+// implementation running in the production meshchatx container on 2026-08-30
+// (`docker exec meshchatx python3 -c '...LXStamper...'`), at the real
+// production cost (17, the live captcha cost at time of writing) and both a
+// small expand_rounds (20, fast to regenerate) and the real production
+// default (3000). If a future edit to the four functions above changes
+// their output for these fixed inputs, `cargo test` fails immediately and
+// loudly, instead of stamps silently failing validation in production.
+//
+// This does NOT automatically detect ratspeak changing the *upstream*
+// algorithm (there is no live dependency to observe that). See
+// `scripts/check-lxmf-stamper-drift.mjs` for a network-gated, manually-run
+// check against the pinned upstream commit for that half of the risk.
+#[cfg(test)]
+mod stamper_cross_validation {
+    use super::*;
+
+    /// Fixed materials used below, kept as hex strings and decoded at test
+    /// time rather than hand-transcribed to byte arrays, so there is no
+    /// risk of a transcription typo desyncing this from the exact bytes
+    /// passed to the live cross-validation run.
+    const MATERIAL_A_HEX: &str = "deadbeef00112233445566778899aabbccddeeff0011223344556677889900aa";
+    const MATERIAL_B_HEX: &str = "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+
+    fn hex_decode(s: &str) -> Vec<u8> {
+        (0..s.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+            .collect()
+    }
+
+    fn sha256_hex(data: &[u8]) -> String {
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(data);
+        hasher
+            .finalize()
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect()
+    }
+
+    #[test]
+    fn workblock_matches_live_python_rounds_20() {
+        let material = hex_decode(MATERIAL_A_HEX);
+        let wb = stamp_workblock(&material, 20);
+        assert_eq!(wb.len(), 20 * 256);
+        assert_eq!(
+            sha256_hex(&wb),
+            "b47260004d515a8b42462c120d5c48eb9c44554566219ab74daea4e26b6235d3",
+        );
+    }
+
+    /// Production expand_rounds (3000, `STAMP_WORKBLOCK_EXPAND_ROUNDS` in
+    /// rsLXMF / `LXStamper.WORKBLOCK_EXPAND_ROUNDS` in Python), a different
+    /// material than the rounds=20 vectors so this isn't just re-testing
+    /// the same input at a different round count.
+    #[test]
+    fn workblock_matches_live_python_rounds_3000_production() {
+        let material = hex_decode(MATERIAL_B_HEX);
+        let wb = stamp_workblock(&material, 3000);
+        assert_eq!(wb.len(), 3000 * 256);
+        assert_eq!(
+            sha256_hex(&wb),
+            "3be8b22769008b71c8bf6f12a8623f91031d879603af79229105aef6be7970b5",
+        );
+    }
+
+    /// A stamp this crate's solver found for `MATERIAL_A_HEX` at cost=17
+    /// (the live captcha cost at time of writing), rounds=20, verified
+    /// `True` / `stamp_value=17` by the live Python `LXStamper.stamp_valid`
+    /// / `stamp_value`. Confirms our stamps are accepted by the real server.
+    #[test]
+    fn our_generated_stamp_is_valid_and_matches_python_value() {
+        let material = hex_decode(MATERIAL_A_HEX);
+        let stamp = hex_decode("d675c81aa07d00dbd8f85e9d40a6b8be0c4abbcd194130d1366c805bae2734ca");
+        let mut s = [0u8; 32];
+        s.copy_from_slice(&stamp);
+        let wb = stamp_workblock(&material, 20);
+        assert_eq!(stamp_value(&wb, &s), 17);
+        assert!(stamp_valid(&s, 17, &wb));
+    }
+
+    /// A stamp the live Python `LXStamper.generate_stamp` produced for the
+    /// same material/cost/rounds. Confirms this crate accepts a stamp it
+    /// did not itself generate, i.e. the reverse direction of the
+    /// cross-check above (both directions matter: a one-way match can hide
+    /// an asymmetric bug).
+    #[test]
+    fn python_generated_stamp_validates_here() {
+        let material = hex_decode(MATERIAL_A_HEX);
+        let stamp = hex_decode("23794be32dec1ca504c8ff6095c44db64dd9da78dd5f9560e51fed02e1aac67d");
+        let mut s = [0u8; 32];
+        s.copy_from_slice(&stamp);
+        let wb = stamp_workblock(&material, 20);
+        assert!(stamp_valid(&s, 17, &wb));
+    }
+
+    /// Same reverse-direction check at the real production expand_rounds
+    /// (3000) and the live cost (17), not just the fast rounds=20 vectors
+    /// above.
+    #[test]
+    fn python_generated_stamp_validates_here_at_production_rounds() {
+        let material = hex_decode(MATERIAL_B_HEX);
+        let stamp = hex_decode("4c9dc478805ea339113dbe7fe674ee5c1b18a5ef3d012c3c0ce169ef5ac3a363");
+        let mut s = [0u8; 32];
+        s.copy_from_slice(&stamp);
+        let wb = stamp_workblock(&material, 3000);
+        assert!(stamp_valid(&s, 17, &wb));
+    }
+
+    /// And the forward direction at production rounds: a stamp this
+    /// crate's algorithm found, verified `True` by live Python.
+    #[test]
+    fn our_generated_stamp_valid_at_production_rounds() {
+        let material = hex_decode(MATERIAL_B_HEX);
+        let stamp = hex_decode("261aa577bf5d277ecaa2eae0df35974f0728c8982fc213907712b89a78d4a51a");
+        let mut s = [0u8; 32];
+        s.copy_from_slice(&stamp);
+        let wb = stamp_workblock(&material, 3000);
+        assert_eq!(stamp_value(&wb, &s), 17);
+        assert!(stamp_valid(&s, 17, &wb));
+    }
+}
