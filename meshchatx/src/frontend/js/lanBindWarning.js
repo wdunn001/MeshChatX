@@ -30,6 +30,10 @@ export function shouldShowLanBindNoAuthBanner({
     isLoopbackBind = true,
     routeName = "",
     dismissed = false,
+    // A route that renders on its own (the auth page, and on a shared
+    // instance the accounts sign-in page) carries no shell chrome, so this
+    // banner about the shell's own bind settings has nothing to attach to.
+    isStandaloneRoute = false,
 } = {}) {
     if (dismissed || isLanBindNoAuthBannerDismissed()) {
         return false;
@@ -37,7 +41,7 @@ export function shouldShowLanBindNoAuthBanner({
     if (isElectron || isAndroid) {
         return false;
     }
-    if (routeName === "auth") {
+    if (routeName === "auth" || isStandaloneRoute) {
         return false;
     }
     if (authEnabled) {

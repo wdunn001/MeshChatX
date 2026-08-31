@@ -44,7 +44,7 @@
             @open-interfaces="onOpenInterfacesForRecovery"
         />
 
-        <RouterView v-if="$route.name === 'auth'" />
+        <RouterView v-if="isStandaloneRoute" />
 
         <template v-else>
             <div
@@ -425,7 +425,7 @@
         <Toast />
         <ConfirmDialog />
         <PromptDialog />
-        <CommandPalette ref="commandPalette" />
+        <CommandPalette v-if="!isStandaloneRoute" ref="commandPalette" />
         <IntegrityWarningModal />
         <ChangelogModal ref="changelogModal" :app-version="appInfo?.version" />
         <TutorialModal ref="tutorialModal" />
@@ -688,6 +688,14 @@ export default {
         isPopoutMode() {
             return this.currentPopoutType != null;
         },
+        isStandaloneRoute() {
+            // A route that renders on its own, with no shell around it: the
+            // single password page, and on a shared instance the accounts
+            // sign-in page and the first-run mode choice. Whoever is looking
+            // at one of these has not established a session yet, so nothing
+            // in the shell (nav rail, identity widget, polling) applies.
+            return this.$route?.meta?.standalone === true;
+        },
         sidebarDisplayVersion() {
             const info = this.appInfo || {};
             if (info.display_version) {
@@ -792,7 +800,7 @@ export default {
             return GlobalState.activeCallTab;
         },
         showWsDisconnectedBanner() {
-            return this.shellRunning && this.wsDisconnected && this.$route?.name !== "auth";
+            return this.shellRunning && this.wsDisconnected && !this.isStandaloneRoute;
         },
         backendOfflineBannerLabel() {
             const duration = this.wsDisconnectedDurationText;
@@ -813,14 +821,14 @@ export default {
             );
         },
         showNetworkDegradedBanner() {
-            return Boolean(GlobalState.networkDegraded) && this.$route?.name !== "auth";
+            return Boolean(GlobalState.networkDegraded) && !this.isStandaloneRoute;
         },
         showNetworkStartingBanner() {
             return (
                 Boolean(GlobalState.networkStarting) &&
                 !GlobalState.networkDegraded &&
                 !GlobalState.networkReady &&
-                this.$route?.name !== "auth"
+                !this.isStandaloneRoute
             );
         },
         showLanBindNoAuthBanner() {
@@ -831,6 +839,7 @@ export default {
                 authEnabled: GlobalState.authEnabled,
                 isLoopbackBind: GlobalState.isLoopbackBind,
                 routeName: this.$route?.name,
+                isStandaloneRoute: this.isStandaloneRoute,
             });
         },
         networkDegradedBannerLabel() {
@@ -1072,6 +1081,7 @@ export default {
                     GlobalState.authSessionResolved,
                     GlobalState.authEnabled,
                     GlobalState.authenticated,
+                    GlobalState.authMode,
                     this.$route?.name,
                 ],
                 () => this.applyShellAuthState(),
@@ -1082,7 +1092,7 @@ export default {
             if (!GlobalState.authSessionResolved) {
                 return;
             }
-            const needShell = !GlobalState.authEnabled || (GlobalState.authenticated && this.$route.name !== "auth");
+            const needShell = this.computeNeedShell();
             if (needShell && !this.shellRunning) {
                 if (GlobalState.networkStarting && !GlobalState.networkReady && !GlobalState.networkDegraded) {
                     this.waitForMeshThenStartShell();
@@ -1092,6 +1102,20 @@ export default {
             } else if (!needShell && this.shellRunning) {
                 this.stopShell();
             }
+        },
+        computeNeedShell() {
+            // A shared instance signs in by account rather than by the single
+            // password app.auth_enabled guards, so app.auth_enabled stays
+            // false there and cannot be the thing that decides this. A
+            // visitor with no session gets the entry gate and nothing else,
+            // the same way the accounts and setup-mode routes are excluded
+            // below for the single password case.
+            if (GlobalState.authMode === "accounts") {
+                return (
+                    GlobalState.authenticated && this.$route.name !== "accounts" && this.$route.name !== "setup-mode"
+                );
+            }
+            return !GlobalState.authEnabled || (GlobalState.authenticated && this.$route.name !== "auth");
         },
         waitForMeshThenStartShell() {
             if (this._meshWaitStarted) {
@@ -1345,7 +1369,7 @@ export default {
             }
         },
         maybeNavigateNetworkRecovery() {
-            if (!GlobalState.networkDegraded || this.$route?.name === "auth") {
+            if (!GlobalState.networkDegraded || this.isStandaloneRoute) {
                 return;
             }
             const loc = recoveryLocationForNetworkError(GlobalState.networkDegradedError);

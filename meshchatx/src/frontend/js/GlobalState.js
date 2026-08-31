@@ -4,6 +4,10 @@ import { reactive } from "vue";
 const globalState = reactive({
     authSessionResolved: true,
     authEnabled: false,
+    // How this instance decides who may use it: null (not yet resolved, or a
+    // single desktop build that never asks), "open", "single", or "accounts".
+    // Set from /api/v1/auth/status once boot resolves it.
+    authMode: null,
     isLoopbackBind: true,
     authenticated: false,
     pluginsEnabled: true,

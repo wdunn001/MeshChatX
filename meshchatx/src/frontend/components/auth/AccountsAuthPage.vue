@@ -2,7 +2,13 @@
 
 <template>
     <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="w-full max-w-sm space-y-4">
+        <div class="w-full max-w-sm space-y-6">
+            <div class="text-center space-y-1">
+                <img class="w-12 h-12 mx-auto mb-1 object-contain" :src="logoUrl" alt="" />
+                <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $t("app.name") }}</div>
+                <p class="text-sm text-gray-600 dark:text-gray-400">{{ $t("app.tagline") }}</p>
+            </div>
+
             <div class="text-center space-y-1">
                 <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
                     {{ mode === "register" ? "Create an account" : "Sign in" }}
@@ -75,11 +81,13 @@
 
 <script>
 import { solveStampChallenge } from "../../js/stampChallenge.js";
+import logoUrl from "../../assets/images/logo.png";
 
 export default {
     name: "AccountsAuthPage",
     data() {
         return {
+            logoUrl,
             mode: "login",
             username: "",
             password: "",

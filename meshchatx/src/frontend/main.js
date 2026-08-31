@@ -68,18 +68,23 @@ const router = createRouter({
             name: "accounts",
             path: "/accounts",
             component: () => import("./components/auth/AccountsAuthPage.vue"),
-            meta: { isPage: true },
+            // standalone: App.vue renders this route on its own, with none of
+            // the signed-in shell around it. A visitor with no session has
+            // nothing to do with a nav rail, Compose, or a peer identity
+            // widget, so the shell never mounts behind this page.
+            meta: { isPage: true, standalone: true },
         },
         {
             name: "setup-mode",
             path: "/setup-mode",
             component: () => import("./components/auth/SetupModePage.vue"),
-            meta: { isPage: true },
+            meta: { isPage: true, standalone: true },
         },
         {
             name: "auth",
             path: "/auth",
             component: () => import("./components/auth/AuthPage.vue"),
+            meta: { standalone: true },
         },
         {
             path: "/",
@@ -366,7 +371,7 @@ window.api = createApiClient({
 });
 
 import { waitForMeshReady, waitForNetworkReady } from "./js/networkStartupWait.js";
-import { resolveAuthNavigation } from "./js/authSessionSync.js";
+import { applyAuthStatusToGlobalState, fetchAuthStatus, resolveAuthNavigation } from "./js/authSessionSync.js";
 
 function setBootSplashLine(text) {
     const splash = typeof document !== "undefined" ? document.getElementById("meshchatx-boot-splash") : null;
@@ -419,6 +424,18 @@ if (networkReady) {
     } catch {
         // CSRF token will be retried on the next mutating request if needed.
     }
+
+    // Started here, not awaited here. mount() below must not wait on this, or
+    // boot timing changes for every build including desktop. loadPluginsIfEnabled
+    // is the one caller that needs the real answer rather than the GlobalState
+    // defaults, because it runs synchronously out of bootstrap() before the
+    // router guard below has had a chance to resolve the same question.
+    const initialAuthStatusPromise = fetchAuthStatus(window.api)
+        .then((status) => {
+            applyAuthStatusToGlobalState(status);
+            return status;
+        })
+        .catch(() => null);
 
     router.beforeEach(async (to, _from, next) => {
         const decision = await resolveAuthNavigation(to, window.api);
@@ -563,6 +580,14 @@ if (networkReady) {
     }
 
     async function loadPluginsIfEnabled() {
+        await initialAuthStatusPromise;
+        // A shared instance's plugin list is admin state, not something a
+        // visitor who has not signed in yet has any use for. GlobalState.authEnabled
+        // is the single password flag and stays false on an accounts instance,
+        // so it cannot be the thing that gates this below.
+        if (GlobalState.authMode === "accounts" && !GlobalState.authenticated) {
+            return;
+        }
         if (!(GlobalState.authenticated || !GlobalState.authEnabled)) {
             return;
         }
