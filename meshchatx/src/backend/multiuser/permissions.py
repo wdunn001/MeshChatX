@@ -33,9 +33,14 @@ from meshchatx.src.backend.multiuser import (
 )
 
 # Reachable by anyone, signed in or not. Sign in itself has to be, or nobody
-# could ever sign in.
+# could ever sign in. Status is here too: this instance runs its network
+# stack independently of any browser session, so the frontend boot gate has
+# to be able to learn the app is up before there is anyone to sign in as.
+# The route itself keeps the detailed payload behind whether a context is
+# bound to the request, so being public here only ever hands out readiness.
 PUBLIC_PREFIXES = (
     "/api/v1/auth/",
+    "/api/v1/status",
     "/api/v1/multiuser/status",
     "/api/v1/multiuser/register",
     "/api/v1/multiuser/login",
@@ -47,7 +52,6 @@ PUBLIC_PREFIXES = (
 # their own preferences. Every one of these is scoped to their own identity.
 USER_PREFIXES = (
     "/api/v1/app",
-    "/api/v1/status",
     "/api/v1/config",
     "/api/v1/announces",
     "/api/v1/announce",

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from meshchatx.src.backend.request_context import get_active_context
 
 from meshchatx.src.backend.http.meshchat_names import (  # noqa: F401
     GeoValidationError,
@@ -132,10 +133,52 @@ from meshchatx.src.backend.http.meshchat_names import (  # noqa: F401
 )
 
 
+def _public_startup_status_payload(app) -> dict:
+    """Boot readiness only, safe to hand to a caller who has not signed in.
+
+    A shared instance answers this endpoint before anyone can obtain a
+    session, so the frontend boot gate can tell the app is up at all. It
+    carries none of the fields the signed-in payload carries: no listen
+    host or port, no interface or plugin state, no identity hashes, and no
+    peer or announce data. When startup has failed the real error text is
+    withheld too, since it can name interfaces or paths, and replaced with
+    a generic message.
+    """
+    full = app._startup_status_payload()
+    stage = full.get("stage")
+    payload = {
+        "status": full.get("status"),
+        "stage": stage if isinstance(stage, str) else None,
+        "network_ready": bool(full.get("network_ready")),
+        "network_degraded": bool(full.get("network_degraded")),
+        "ui_ready": bool(full.get("ui_ready")),
+    }
+    if full.get("status") == "failed":
+        payload["error"] = "Network startup failed"
+    return payload
+
+
 def register_status_routes(routes, app):
 
     @routes.get("/api/v1/status")
     async def status(request):
+        # account_store exists only when the multiuser feature was switched
+        # on at startup (register_multiuser_routes is what creates it, and
+        # only runs then), so it is the same signal already used to decide
+        # whether the multiuser middleware itself is installed. Recomputing
+        # "is multiuser enabled" here from the env var or settings file
+        # instead would be a second, independent read of the same fact,
+        # able to disagree with the one that actually decided whether a
+        # session is required to reach this route at all. A signed-in
+        # caller in multi-user mode is bound to an identity context by the
+        # multiuser middleware before this handler runs; a caller with no
+        # session reaches here with no context bound. Give the first the
+        # full detailed payload as always, and the second readiness only,
+        # so the frontend boot gate can mount the shell without ever
+        # needing a session to learn the app is up.
+        multiuser_active = getattr(app, "account_store", None) is not None
+        if multiuser_active and get_active_context() is None:
+            return web.json_response(_public_startup_status_payload(app))
         return web.json_response(app._startup_status_payload())
 
     @routes.post("/api/v1/reticulum/recover")

@@ -12,6 +12,15 @@ export const STARTUP_STAGE_LABELS = {
 /**
  * Interpret a /api/v1/status JSON body for boot gating.
  * Only own properties are trusted so prototype pollution cannot spoof readiness.
+ *
+ * A body with no "status" key at all, such as a session error like
+ * {"error": "Sign in to use this instance"}, is never treated as
+ * "starting". A body of that kind proves the server answered the request,
+ * and answering is all boot gating needs: the shell should mount and let
+ * the sign-in page take it from there rather than keep polling toward a
+ * timeout. Only an explicit "starting" status keeps the caller waiting; a
+ * "status" value nobody recognizes is reported as "invalid" rather than
+ * guessed at.
  * @param {unknown} data
  * @returns {{ kind: "ready" | "ui" | "degraded" | "failed" | "starting" | "invalid", stage?: string, error?: string, label?: string }}
  */
@@ -46,7 +55,7 @@ export function interpretStartupStatus(data) {
     if (status === "ok" || networkReady) {
         return { kind: "ready", stage: stage || "ready" };
     }
-    if (status === "starting" || status === undefined) {
+    if (status === "starting") {
         const resolvedStage = stage || "starting";
         const label = STARTUP_STAGE_LABELS[resolvedStage] || "Starting RNS…";
         // HTTP is bound and the shell may mount while RNS/identity finish.
@@ -63,6 +72,24 @@ export function interpretStartupStatus(data) {
             label,
         };
     }
+    if (!own("status")) {
+        // No status key at all: an auth-gated response ({"error": "..."})
+        // or any other body that is not shaped like a boot status. The
+        // server still answered with a well-formed object, so that is
+        // enough to stop waiting and mount, the same as an explicit "ui"
+        // state, instead of falling back to "starting" as though nothing
+        // had happened.
+        return {
+            kind: "ui",
+            stage: stage || "unknown",
+            label: "Opening the app…",
+            error,
+        };
+    }
+    // A "status" value present but not one of the ones above. Reported
+    // distinctly from the no-status case: this is a body that answered the
+    // question and gave a reply nobody here understands, which is worth
+    // surfacing as such rather than folding into either "starting" or "ui".
     return { kind: "invalid", stage };
 }
 

@@ -80,6 +80,46 @@ describe("networkStartupWait", () => {
         expect(interpretStartupStatus({ status: "nope" }).kind).toBe("invalid");
     });
 
+    // Regression: an unauthenticated caller against a multi-user backend
+    // used to get {"error": "Sign in to use this instance"} back from
+    // /api/v1/status, which has no "status" key. That body matched the old
+    // `status === undefined` branch of the "starting" check, so the boot
+    // gate polled it for the full timeout and printed "Network startup
+    // timed out." even though the backend was healthy and simply waiting
+    // for a session it could never receive during boot. Neither an
+    // auth-error body nor any other body missing "status" may map to
+    // "starting" again: both must resolve to a mountable state instead.
+    it("interpretStartupStatus does not treat an auth-error body as starting", () => {
+        const result = interpretStartupStatus({ error: "Sign in to use this instance" });
+        expect(result.kind).not.toBe("starting");
+        expect(result.kind).toBe("ui");
+        expect(result.error).toBe("Sign in to use this instance");
+    });
+
+    it("interpretStartupStatus does not treat an unknown body as starting", () => {
+        const result = interpretStartupStatus({ some: "shape nobody defined" });
+        expect(result.kind).not.toBe("starting");
+        expect(result.kind).toBe("ui");
+    });
+
+    it("waitForNetworkReady mounts immediately on an auth-error body instead of timing out", async () => {
+        const lines = [];
+        const errors = [];
+        const ready = await waitForNetworkReady({
+            fetchImpl: async () => ({
+                ok: true,
+                json: async () => ({ error: "Sign in to use this instance" }),
+            }),
+            sleep: async () => {},
+            timeoutMs: 1000,
+            onLine: (text) => lines.push(text),
+            onErrorState: () => errors.push("error"),
+        });
+        expect(ready).toBe("ui");
+        expect(errors).toEqual([]);
+        expect(lines.some((line) => line.includes("timed out"))).toBe(false);
+    });
+
     it("waitForNetworkReady resolves when status becomes ok", async () => {
         let calls = 0;
         const lines = [];
