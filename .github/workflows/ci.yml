@@ -384,6 +384,27 @@ jobs:
             - name: Run Playwright smoke E2E
               run: bash scripts/ci/github-e2e.sh
 
+    e2e-multiuser:
+        name: E2E hosted multi-user entry gate
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        permissions:
+            contents: read
+        steps:
+            - name: Checkout
+              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+
+            - name: Set up development environment
+              uses: ./.github/actions/setup-dev-environment
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
+                  uv-version: ${{ env.UV_VERSION }}
+                  node-version: ${{ env.NODE_VERSION }}
+                  pnpm-version: ${{ env.PNPM_VERSION }}
+
+            - name: Run Playwright hosted multi-user entry gate E2E
+              run: bash scripts/ci/github-e2e-multiuser.sh
+
     self-check:
         name: Headless Self-Check (${{ matrix.os }})
         runs-on: ${{ matrix.os }}
