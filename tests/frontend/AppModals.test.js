@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { mount } from "@vue/test-utils";
 import App from "../../meshchatx/src/frontend/components/App.vue";
+import GlobalState from "../../meshchatx/src/frontend/js/GlobalState.js";
 import { appPackageVersion } from "./fixtures/repoPackageVersion.js";
 import { createRouter, createWebHashHistory } from "vue-router";
 import { createI18n } from "vue-i18n";
@@ -63,6 +64,17 @@ describe("App.vue Modals", () => {
             routes,
         });
         vi.clearAllMocks();
+        // This test mounts App.vue against its own bare router, with no
+        // main.js-style beforeEach guard attached, so nothing here ever
+        // calls applyAuthStatusToGlobalState the way production does a
+        // moment after boot. Seed the same end state that guard would have
+        // left behind for a no-auth, non-accounts instance (matching the
+        // /api/v1/auth/status mock below), so the shell-start watcher's
+        // authModeResolved gate does not block it forever in this test.
+        GlobalState.authModeResolved = true;
+        GlobalState.authMode = null;
+        GlobalState.authEnabled = false;
+        GlobalState.authenticated = false;
         axiosMock.get.mockImplementation((url) => {
             if (url === "/api/v1/app/info") {
                 return Promise.resolve({

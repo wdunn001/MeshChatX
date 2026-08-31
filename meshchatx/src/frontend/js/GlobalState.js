@@ -8,6 +8,12 @@ const globalState = reactive({
     // single desktop build that never asks), "open", "single", or "accounts".
     // Set from /api/v1/auth/status once boot resolves it.
     authMode: null,
+    // True once the real /api/v1/auth/status answer has been read at least
+    // once. Starts false, unlike authSessionResolved above, specifically so
+    // App.vue's shell-start watcher has a field that reliably flips from
+    // false to true and therefore always fires, rather than one that may
+    // already equal its post-resolve value and never trigger a change.
+    authModeResolved: false,
     isLoopbackBind: true,
     authenticated: false,
     pluginsEnabled: true,

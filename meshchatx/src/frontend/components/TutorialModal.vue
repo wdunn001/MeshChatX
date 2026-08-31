@@ -2412,7 +2412,16 @@ export default {
     },
     computed: {
         isPage() {
-            return this.$route?.meta?.isPage === true;
+            // Checked against this component's own route rather than a
+            // shared route.meta flag: App.vue also keeps one TutorialModal
+            // mounted at all times as an overlay, reachable by ref from any
+            // route, and that instance must stay a dialog. A shared
+            // route.meta.isPage flag would make it think it were the routed
+            // page too whenever the CURRENT route happened to carry that
+            // flag for an unrelated reason, such as the accounts sign-in
+            // page, unwrapping the dialog and rendering the tour to whoever
+            // is standing on that route.
+            return this.$route?.name === "tutorial";
         },
         dialogFullscreen() {
             return this.windowWidth < 768;

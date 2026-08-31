@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: 0BSD
 
-// Oracle for the hosted multi-user entry gate: an anonymous visitor to a
-// server running in accounts mode must get the sign-in page and nothing
-// else. App.vue is a single-user desktop shell everywhere else, so the
-// route the router lands an unauthenticated accounts-mode visitor on has to
-// be excluded from that shell explicitly, both for what renders and for
-// what the shell's own polling fetches.
+// Oracle for the hosted multi-user entry gate: a server running in accounts
+// mode is a shared resource, and the sign-in gate is what protects it, not
+// a browsable state that happens to lack a session. Someone with no session
+// on such an instance must get the sign-in page and nothing else. App.vue is
+// a single-user desktop shell everywhere else, so the route the router
+// lands a signed-out accounts-mode visitor on has to be excluded from that
+// shell explicitly, both for what renders and for what the shell's own
+// polling fetches.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
@@ -38,13 +40,34 @@ const AUTHENTICATED_ONLY_PATHS = [
 ];
 
 describe("App.vue computeNeedShell", () => {
+    beforeEach(() => {
+        // Post-resolution decision logic is what these cases exercise; the
+        // pre-resolution race itself has its own test below.
+        GlobalState.authModeResolved = true;
+    });
+
     afterEach(() => {
+        GlobalState.authModeResolved = false;
         GlobalState.authMode = null;
         GlobalState.authEnabled = false;
         GlobalState.authenticated = false;
     });
 
     const needShellFor = (routeName) => App.methods.computeNeedShell.call({ $route: { name: routeName } });
+
+    it("never starts the shell before the real auth status has been read once, in any mode", () => {
+        GlobalState.authModeResolved = false;
+        // Every field below is a value that would say "start" once resolved;
+        // the point is that none of them matter until authModeResolved is
+        // true, because this is exactly the state GlobalState is in for a
+        // few milliseconds after every boot, accounts mode included, and
+        // guessing "start" during that window is how a shared instance ends
+        // up firing authenticated requests before anyone has signed in.
+        GlobalState.authMode = null;
+        GlobalState.authEnabled = false;
+        GlobalState.authenticated = true;
+        expect(needShellFor("messages")).toBe(false);
+    });
 
     it("keeps the shell down on the accounts page with no session", () => {
         GlobalState.authMode = "accounts";
@@ -89,7 +112,7 @@ describe("App.vue computeNeedShell", () => {
     });
 });
 
-describe("App.vue anonymous entry on a multi-user instance", () => {
+describe("App.vue sign-in gate on a multi-user instance with no session", () => {
     let router;
     let axiosMock;
 
@@ -103,6 +126,7 @@ describe("App.vue anonymous entry on a multi-user instance", () => {
         GlobalState.authEnabled = false;
         GlobalState.authenticated = false;
         GlobalState.authSessionResolved = true;
+        GlobalState.authModeResolved = true;
         GlobalState.networkReady = true;
         GlobalState.networkStarting = false;
         GlobalState.networkDegraded = false;
@@ -141,6 +165,7 @@ describe("App.vue anonymous entry on a multi-user instance", () => {
         GlobalState.authMode = null;
         GlobalState.authEnabled = false;
         GlobalState.authenticated = false;
+        GlobalState.authModeResolved = false;
     });
 
     it("renders only the routed gate, with no shell chrome around it", async () => {

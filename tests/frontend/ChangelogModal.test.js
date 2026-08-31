@@ -23,10 +23,13 @@ describe("ChangelogModal.vue", () => {
             global: {
                 mocks: {
                     $t: (key, def) => def || key,
+                    // isPage now reads the component's own route name (see
+                    // ChangelogModal.vue), not a shared route.meta flag, so
+                    // the mock route has to actually be named "changelog"
+                    // to exercise the page-mode branch these tests cover.
                     $route: {
-                        meta: {
-                            isPage: props.isPage || false,
-                        },
+                        name: props.isPage ? "changelog" : "messages",
+                        meta: {},
                     },
                 },
                 stubs: {

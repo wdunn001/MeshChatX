@@ -21,6 +21,7 @@ export function applyAuthStatusToGlobalState(status) {
         GlobalState.isLoopbackBind = status.is_loopback_bind;
     }
     GlobalState.authSessionResolved = true;
+    GlobalState.authModeResolved = true;
 }
 
 /**

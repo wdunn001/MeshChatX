@@ -1079,6 +1079,7 @@ export default {
             this._shellAuthWatchStop = watch(
                 () => [
                     GlobalState.authSessionResolved,
+                    GlobalState.authModeResolved,
                     GlobalState.authEnabled,
                     GlobalState.authenticated,
                     GlobalState.authMode,
@@ -1104,6 +1105,18 @@ export default {
             }
         },
         computeNeedShell() {
+            // Before the real /api/v1/auth/status answer has come back at
+            // least once, GlobalState.authMode is still its unresolved
+            // default. Starting the shell on that guess is where a shared
+            // instance ends up firing roughly a dozen authenticated requests
+            // at a visitor who has not signed in, since a request already
+            // sent cannot be unsent once the real answer says accounts mode
+            // after all. The wait is one request long and happens whether or
+            // not this build uses accounts, so it costs every mode the same
+            // sub-beat delay rather than singling one out.
+            if (!GlobalState.authModeResolved) {
+                return false;
+            }
             // A shared instance signs in by account rather than by the single
             // password app.auth_enabled guards, so app.auth_enabled stays
             // false there and cannot be the thing that decides this. A
