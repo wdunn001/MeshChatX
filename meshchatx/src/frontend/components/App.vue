@@ -1148,18 +1148,24 @@ export default {
             if (!GlobalState.authModeResolved) {
                 return false;
             }
+            // A standalone route renders on its own, with no shell around it,
+            // so there is nothing for the shell to wrap and nobody to poll
+            // for. This is one rule covering the accounts gate, the first run
+            // mode choice, and the single password page, instead of three
+            // route names spelled out in two branches. It also stops the
+            // tutorial and the changelog opening over the first run mode
+            // choice, which is what happens when the shell starts behind a
+            // page that is deliberately bare.
+            if (this.isStandaloneRoute) {
+                return false;
+            }
             // A shared instance signs in by account rather than by the single
             // password app.auth_enabled guards, so app.auth_enabled stays
-            // false there and cannot be the thing that decides this. A
-            // visitor with no session gets the entry gate and nothing else,
-            // the same way the accounts and setup-mode routes are excluded
-            // below for the single password case.
+            // false there and cannot be the thing that decides this.
             if (GlobalState.authMode === "accounts") {
-                return (
-                    GlobalState.authenticated && this.$route.name !== "accounts" && this.$route.name !== "setup-mode"
-                );
+                return GlobalState.authenticated;
             }
-            return !GlobalState.authEnabled || (GlobalState.authenticated && this.$route.name !== "auth");
+            return !GlobalState.authEnabled || GlobalState.authenticated;
         },
         waitForMeshThenStartShell() {
             if (this._meshWaitStarted) {

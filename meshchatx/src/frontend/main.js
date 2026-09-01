@@ -376,7 +376,13 @@ window.api = createApiClient({
 });
 
 import { waitForMeshReady, waitForNetworkReady } from "./js/networkStartupWait.js";
-import { applyAuthStatusToGlobalState, fetchAuthStatus, resolveAuthNavigation } from "./js/authSessionSync.js";
+import {
+    applyAuthStatusToGlobalState,
+    fetchAuthStatus,
+    fetchMultiuserStatus,
+    resolveAuthNavigation,
+} from "./js/authSessionSync.js";
+import { isHostedInstance, isInstanceAdmin } from "./js/accountRole.js";
 
 function setBootSplashLine(text) {
     const splash = typeof document !== "undefined" ? document.getElementById("meshchatx-boot-splash") : null;
@@ -595,6 +601,19 @@ if (networkReady) {
         }
         if (!(GlobalState.authenticated || !GlobalState.authEnabled)) {
             return;
+        }
+        // The plugin list is admin state on a shared instance, so an ordinary
+        // account is refused it. Read the role first when it is not known yet:
+        // this runs at boot and can beat the router guard that normally loads
+        // it, and guessing here would either skip plugins for the operator or
+        // spend a 403 on everybody else.
+        if (isHostedInstance(GlobalState)) {
+            if (!GlobalState.accountRole) {
+                await fetchMultiuserStatus(window.api);
+            }
+            if (!isInstanceAdmin(GlobalState)) {
+                return;
+            }
         }
         try {
             const response = await window.api.get("/api/v1/plugins");

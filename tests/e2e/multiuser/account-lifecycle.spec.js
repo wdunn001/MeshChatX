@@ -1,5 +1,5 @@
 const { test, expect } = require("@playwright/test");
-const { freshAccountCredentials, registerViaUi } = require("./helpers");
+const { freshAccountCredentials, registerViaUi, dismissHostedWelcomeCard } = require("./helpers");
 const { e2ePatch } = require("../helpers");
 
 // Contract point 9: after a successful sign in or account creation, the full
@@ -23,7 +23,17 @@ test.describe("Hosted multi-user account lifecycle", () => {
         // any state from before sign in, so wait for the shell to reappear
         // fresh rather than assuming the same document.
         await expect(page.getByTestId("header-command-palette")).toBeVisible({ timeout: 30000 });
-        await expect(page.getByText(credentials.username)).toBeVisible({ timeout: 20000 });
+
+        // A brand new account meets the hosted welcome card first. Close it so
+        // this test is about the shell rather than the card, which has its own
+        // spec.
+        await dismissHostedWelcomeCard(page);
+        // Scoped to the identity widget on purpose. The sign out row in the
+        // same footer names the account too, so a bare text match finds more
+        // than one element and says nothing about which surface is right.
+        await expect(page.getByTestId("sidebar-account-chip").getByText(credentials.username)).toBeVisible({
+            timeout: 20000,
+        });
 
         // The sign-in gate must be gone now that a shell is mounted.
         await expect(page.locator('input[autocomplete="username"]')).toHaveCount(0);
@@ -50,14 +60,17 @@ test.describe("Hosted multi-user account lifecycle", () => {
         await page.locator('input[type="password"]').first().fill(credentials.password);
         const loginCall = page.waitForResponse(
             (r) => r.url().includes("/api/v1/multiuser/login") && r.request().method() === "POST",
-            { timeout: 30000 },
+            { timeout: 30000 }
         );
         await page.getByRole("button", { name: "Sign in", exact: true }).click();
         const loginResponse = await loginCall;
         expect(loginResponse.status(), await loginResponse.text().catch(() => "")).toBe(200);
 
         await expect(page.getByTestId("header-command-palette")).toBeVisible({ timeout: 30000 });
-        await expect(page.getByText(credentials.username)).toBeVisible({ timeout: 20000 });
+        await dismissHostedWelcomeCard(page);
+        await expect(page.getByTestId("sidebar-account-chip").getByText(credentials.username)).toBeVisible({
+            timeout: 20000,
+        });
         await expect(usernameField).toHaveCount(0);
     });
 
@@ -81,7 +94,10 @@ test.describe("Hosted multi-user account lifecycle", () => {
         expect(configBody.config?.display_name).not.toBe("Anonymous Peer");
 
         // The identity widget in the shell reflects it too, not just the API.
-        await expect(page.getByText(credentials.username)).toBeVisible({ timeout: 10000 });
+        await dismissHostedWelcomeCard(page);
+        await expect(page.getByTestId("sidebar-account-chip").getByText(credentials.username)).toBeVisible({
+            timeout: 10000,
+        });
 
         const renamedTo = `${credentials.username}-renamed`;
         const patchRes = await e2ePatch(page.request, `${new URL(page.url()).origin}/api/v1/config`, {

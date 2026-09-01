@@ -53,7 +53,21 @@ describe("App.vue computeNeedShell", () => {
         GlobalState.authenticated = false;
     });
 
-    const needShellFor = (routeName) => App.methods.computeNeedShell.call({ $route: { name: routeName } });
+    // The routes main.js marks `meta: { standalone: true }`: the pages that
+    // render on their own with no shell around them. computeNeedShell reads
+    // that flag through App's own isStandaloneRoute computed rather than
+    // matching route names, so the fake route here has to carry the meta the
+    // real route table sets, and the computed is called for real rather than
+    // stubbed.
+    const STANDALONE_ROUTES = new Set(["auth", "accounts", "setup-mode"]);
+
+    const needShellFor = (routeName) => {
+        const context = {
+            $route: { name: routeName, meta: { standalone: STANDALONE_ROUTES.has(routeName) } },
+        };
+        context.isStandaloneRoute = App.computed.isStandaloneRoute.call(context);
+        return App.methods.computeNeedShell.call(context);
+    };
 
     it("never starts the shell before the real auth status has been read once, in any mode", () => {
         GlobalState.authModeResolved = false;
