@@ -294,6 +294,8 @@ import AndroidBridge from "../../js/rnode/AndroidBridge";
 import { permissionLabel } from "../../js/plugins/pluginPermissions.js";
 import { pluginHost } from "../../js/plugins/PluginHost.js";
 import { onWsEvent, offWsEvent } from "../../js/registries/wsEventRegistry.js";
+import GlobalState from "../../js/GlobalState.js";
+import { settingsSectionAllowed } from "../../js/accountRole.js";
 
 export default {
     name: "PluginsSettingsSection",
@@ -323,9 +325,20 @@ export default {
             },
         };
     },
+    computed: {
+        canReadPlugins() {
+            return settingsSectionAllowed("plugins", GlobalState);
+        },
+    },
     mounted() {
-        void this.refresh();
-        void this.refreshSideband();
+        // Plugins administer the instance, so on a shared one this section is
+        // not available to an ordinary account and the backend refuses both
+        // calls below. A component that fetches on mount whatever its visible
+        // prop says would make those two refusals on every visit to Settings.
+        if (this.canReadPlugins) {
+            void this.refresh();
+            void this.refreshSideband();
+        }
         this.onPluginDisabled = (payload) => {
             if (payload?.event === "plugin.disabled") {
                 ToastUtils.warning(this.$t("plugins.settings.kill_switch", { reason: payload?.payload?.reason || "" }));

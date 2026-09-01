@@ -646,6 +646,10 @@ export default {
             hasCheckedForModals: false,
             skipChangelogAfterTutorial: false,
             lanBindNoAuthBannerDismissed: isLanBindNoAuthBannerDismissed(),
+            // Set once the instance has answered that it runs no relay chat
+            // manager. Stops a five second poll from repeating a question the
+            // instance has already answered.
+            relayChatUnavailable: false,
 
             showLxmfQr: false,
             lxmfQrDataUrl: null,
@@ -1181,6 +1185,9 @@ export default {
                 return;
             }
             this.shellRunning = true;
+            // A fresh shell asks the instance about relay chat again, in case
+            // it came up since the last time it answered that it had none.
+            this.relayChatUnavailable = false;
             WebSocketConnection.connect();
             WebSocketConnection.on("disconnected", this.onWsShellDisconnected);
             WebSocketConnection.on("connected", this.onWsShellConnected);
@@ -1752,7 +1759,7 @@ export default {
             }, 300);
         },
         updateRelayChatUnreadCount() {
-            if (!this.rrcEnabled) {
+            if (!this.rrcEnabled || this.relayChatUnavailable) {
                 GlobalState.relayChatUnreadCount = 0;
                 return;
             }
@@ -1765,6 +1772,17 @@ export default {
                     const hubs = response.data?.hubs || [];
                     GlobalState.relayChatUnreadCount = countRelayMentions(hubs);
                 } catch (e) {
+                    // A 503 here is the instance saying it has no relay chat
+                    // manager at all, which is a fact about this deployment
+                    // and not a request that might work next time. Asking
+                    // again every five seconds only fills the console and the
+                    // access log. Anything else is treated as transient and
+                    // retried on the next tick.
+                    if (e?.response?.status === 503) {
+                        this.relayChatUnavailable = true;
+                        GlobalState.relayChatUnreadCount = 0;
+                        return;
+                    }
                     console.error("Failed to update relay chat mention count", e);
                 }
             }, 300);
