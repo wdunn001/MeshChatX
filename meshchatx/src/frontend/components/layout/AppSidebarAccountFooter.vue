@@ -127,7 +127,12 @@
                     {{ $t("app.manage_identities") }}
                 </RouterLink>
             </div>
+        </div>
 
+        <!-- Outside the expanded block on purpose. A hosted terminal is often
+             a borrowed machine, so leaving it must not be hidden behind
+             clicking the account chip open first. -->
+        <div v-if="!isCollapsed" class="border-t border-gray-200 text-gray-900 dark:border-zinc-800 dark:text-zinc-200">
             <HostedAccountRow />
         </div>
     </div>
