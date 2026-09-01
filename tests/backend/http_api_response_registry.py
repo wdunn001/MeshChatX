@@ -682,6 +682,14 @@ HTTP_JSON_GET_CONTRACT_EXCLUDED: tuple[str, ...] = (
     "/api/v1/telephone/voicemails/{id}/audio",
     "/api/v1/lxmf/propagation-node/sync",
     "/api/v1/lxmf/propagation-node/stop-sync",
+    # Registered only when the instance runs in accounts mode, which the
+    # contract app in this file does not. Their JSON shapes are pinned against
+    # a real multi-user app instead, in
+    # tests/backend/test_multiuser_json_contracts.py.
+    "/api/v1/multiuser/status",
+    "/api/v1/multiuser/me",
+    "/api/v1/multiuser/accounts",
+    "/api/v1/multiuser/registration",
 )
 
 _HTTP_JSON_GET_EXCLUDED_PATTERNS: tuple[re.Pattern[str], ...] = (

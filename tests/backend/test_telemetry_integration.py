@@ -19,11 +19,16 @@ def mock_app():
     app.database = MagicMock()
     app.database.telemetry = MagicMock()
 
-    # Mock context
+    # Mock context. process_incoming_telemetry reads active_context, which on a
+    # real app is the signed-in person's context inside a request and
+    # current_context everywhere else. A MagicMock hands back a fresh auto
+    # child for active_context unless it is set here, and the telemetry then
+    # lands on a different mock than the one this test asserts against.
     app.current_context = MagicMock()
     app.current_context.database = app.database
     app.current_context.local_lxmf_destination = MagicMock()
     app.current_context.local_lxmf_destination.hexhash = "local_hash"
+    app.active_context = app.current_context
 
     # Mock reticulum
     app.reticulum = MagicMock()
