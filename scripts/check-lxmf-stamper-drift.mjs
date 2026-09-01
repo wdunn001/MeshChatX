@@ -90,7 +90,7 @@ async function main() {
                 "Either the pin was bumped without updating this script, or upstream changed the " +
                 "file. Review the diff, and if the algorithm changed, re-sync the copy in " +
                 "lxmf-stamper-wasm/src/lib.rs (all four functions) and its KAT tests before " +
-                "trusting stamps against a newer live server:",
+                "trusting stamps against a newer live server:"
         );
         console.error(`  ${COMPARE_URL}`);
         process.exit(1);

@@ -7,19 +7,16 @@
                 <div class="settings-section__eyebrow">Naming</div>
                 <h2>Human-readable names (rns-resolve)</h2>
                 <p>
-                    Type a name instead of a destination hash in the NomadNet browser.
-                    A 32 character hex hash is always used directly and is never sent to
-                    a resolver. Names you pin are remembered locally and answered with no
-                    network traffic.
+                    Type a name instead of a destination hash in the NomadNet browser. A 32 character hex hash is always
+                    used directly and is never sent to a resolver. Names you pin are remembered locally and answered
+                    with no network traffic.
                 </p>
             </div>
         </header>
         <div class="settings-section__body space-y-4">
             <div class="flex items-center justify-between">
                 <div>
-                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        Enable name resolution
-                    </div>
+                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">Enable name resolution</div>
                     <p class="text-xs text-gray-600 dark:text-gray-400">
                         When off, only pinned names and raw hashes are used.
                     </p>
@@ -33,9 +30,7 @@
             </div>
 
             <div class="space-y-2">
-                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    Resolvers
-                </div>
+                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">Resolvers</div>
                 <input
                     type="text"
                     class="input-field font-mono"
@@ -57,10 +52,9 @@
                     @change="(e) => setResolver(1, e.target.value)"
                 />
                 <p class="text-xs text-gray-600 dark:text-gray-400">
-                    A resolver is only consulted when a typed name is not already pinned.
-                    The first is asked, and the second is a fallback used only when the
-                    first cannot be reached or does not know the name. Every record is
-                    checked against the identity that registered it.
+                    A resolver is only consulted when a typed name is not already pinned. The first is asked, and the
+                    second is a fallback used only when the first cannot be reached or does not know the name. Every
+                    record is checked against the identity that registered it.
                 </p>
             </div>
         </div>
@@ -82,8 +76,7 @@ export default {
     },
     emits: ["update-field"],
     data() {
-        return {
-        };
+        return {};
     },
     computed: {
         resolvers() {

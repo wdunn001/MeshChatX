@@ -24,15 +24,7 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "..");
 const CRATE_DIR = path.join(REPO_ROOT, "lxmf-stamper-wasm");
-const OUT_DIR = path.join(
-    REPO_ROOT,
-    "meshchatx",
-    "src",
-    "frontend",
-    "public",
-    "vendor",
-    "lxmf-stamper-wasm",
-);
+const OUT_DIR = path.join(REPO_ROOT, "meshchatx", "src", "frontend", "public", "vendor", "lxmf-stamper-wasm");
 const WASM_NAME = "lxmf_stamper_wasm_bg.wasm";
 const JS_NAME = "lxmf_stamper_wasm.js";
 const VERSION = "0.1.0";
@@ -68,7 +60,7 @@ function main() {
         const jsPath = path.join(OUT_DIR, JS_NAME);
         if (fs.existsSync(wasmPath) && fs.existsSync(jsPath)) {
             console.log(
-                "build-lxmf-stamper-wasm: cargo/wasm-bindgen unavailable, keeping already-committed artifacts.",
+                "build-lxmf-stamper-wasm: cargo/wasm-bindgen unavailable, keeping already-committed artifacts."
             );
             process.exit(0);
         }
@@ -81,29 +73,18 @@ function main() {
         process.exit(0);
     }
 
-    const build = spawnSync(
-        "cargo",
-        ["build", "--release", "--target", "wasm32-unknown-unknown"],
-        { cwd: CRATE_DIR, encoding: "utf8" },
-    );
+    const build = spawnSync("cargo", ["build", "--release", "--target", "wasm32-unknown-unknown"], {
+        cwd: CRATE_DIR,
+        encoding: "utf8",
+    });
     if (build.status !== 0) {
         console.error(build.stderr || build.stdout || "cargo build failed");
         process.exit(1);
     }
 
     fs.mkdirSync(OUT_DIR, { recursive: true });
-    const rawWasm = path.join(
-        CRATE_DIR,
-        "target",
-        "wasm32-unknown-unknown",
-        "release",
-        "lxmf_stamper_wasm.wasm",
-    );
-    const bindgen = spawnSync(
-        "wasm-bindgen",
-        ["--target", "web", "--out-dir", OUT_DIR, rawWasm],
-        { encoding: "utf8" },
-    );
+    const rawWasm = path.join(CRATE_DIR, "target", "wasm32-unknown-unknown", "release", "lxmf_stamper_wasm.wasm");
+    const bindgen = spawnSync("wasm-bindgen", ["--target", "web", "--out-dir", OUT_DIR, rawWasm], { encoding: "utf8" });
     if (bindgen.status !== 0) {
         console.error(bindgen.stderr || bindgen.stdout || "wasm-bindgen failed");
         process.exit(1);
@@ -119,9 +100,7 @@ function main() {
         source: "lxmf-stamper-wasm/ (repo root), built via task build:lxmf-stamper-wasm",
     };
     fs.writeFileSync(path.join(OUT_DIR, "integrity.json"), JSON.stringify(integrity, null, 2) + "\n");
-    console.log(
-        `build-lxmf-stamper-wasm: OK (${wasmBuf.length} bytes WASM, SRI written to vendor/lxmf-stamper-wasm/)`,
-    );
+    console.log(`build-lxmf-stamper-wasm: OK (${wasmBuf.length} bytes WASM, SRI written to vendor/lxmf-stamper-wasm/)`);
 }
 
 main();
