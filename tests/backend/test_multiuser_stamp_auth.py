@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from aiohttp.test_utils import TestClient, TestServer
-from LXMF.LXStamper import generate_stamp
+from LXMF.LXStamper import job_simple, stamp_workblock
 
 from meshchatx.src.backend.multiuser import rate_limit
 from meshchatx.src.backend.stamp_auth import (
@@ -88,9 +88,18 @@ def _solved_stamp_proof() -> dict:
     with patch.dict(os.environ, _STAMP_ENV, clear=False):
         challenge = create_stamp_challenge_dict()
     material = bytes.fromhex(challenge["material"])
-    stamp, _value = generate_stamp(
-        material, challenge["cost"], challenge["expand_rounds"]
-    )
+    # Solve in-process rather than through generate_stamp(). On Linux that
+    # dispatches to job_linux_managed, which forks one worker per core, and
+    # forking from a test that already has a running asyncio event loop
+    # deadlocks: the parent blocks forever reading the worker pipe and the
+    # run never ends. job_simple is the single-process path and is instant at
+    # the cost of 4 these tests configure. The synchronous stamp tests in
+    # test_lxmf_communication.py and test_stamp_auth_oracle.py can keep
+    # calling generate_stamp, because with no event loop running the fork is
+    # safe. Nothing in the backend solves stamps; it only verifies them, so
+    # this is a test-only concern.
+    workblock = stamp_workblock(material, expand_rounds=challenge["expand_rounds"])
+    stamp, _rounds = job_simple(challenge["cost"], workblock, material)
     assert stamp is not None
     return {**challenge, "stamp": stamp.hex()}
 
