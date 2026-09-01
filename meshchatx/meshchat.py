@@ -81,7 +81,7 @@ from meshchatx.src.backend.csrf import (
     rotate_session_csrf_token,
     validate_csrf_header,
 )
-from meshchatx.src.backend.stamp_auth import stamp_auth_enabled_from_env
+from meshchatx.src.backend.stamp_auth import configure_stamp_auth
 from meshchatx.src.backend.auth_page_hint import auth_page_hint_from_env
 from meshchatx.src.backend.demo_mode import (
     auth_bypass_from_env,
@@ -11240,7 +11240,14 @@ def main():
         )
 
     demo_mode = bool(args.demo)
-    stamp_auth_on = stamp_auth_enabled_from_env()
+    # Accounts mean strangers can sign themselves up, so the proof of work is
+    # on by default there. An explicit MESHCHAT_STAMP_AUTH_ENABLED still wins,
+    # in either direction.
+    stamp_auth_storage_dir = args.storage_dir or os.path.join("storage")
+    stamp_auth_on = configure_stamp_auth(
+        stamp_auth_storage_dir,
+        multiuser_enabled=multiuser_is_enabled(stamp_auth_storage_dir),
+    )
 
     reticulum_meshchat = ReticulumMeshChat(
         identity,

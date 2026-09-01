@@ -24,6 +24,7 @@ from meshchatx.src.backend.stamp_auth import (
     STAMP_INVALID_CODE,
     STAMP_REPLAYED_CODE,
     create_stamp_challenge_dict,
+    reset_stamp_auth_configuration,
     reset_used_stamps,
 )
 from tests.backend.conftest import fetch_api_csrf_headers
@@ -47,9 +48,11 @@ _STAMP_ENV = {
 def _isolated_stamp_and_rate_limit_state():
     """Both are process-local module state. Tests must not see each other's."""
     reset_used_stamps()
+    reset_stamp_auth_configuration()
     rate_limit.reset()
     yield
     reset_used_stamps()
+    reset_stamp_auth_configuration()
     rate_limit.reset()
 
 

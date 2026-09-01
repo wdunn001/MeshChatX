@@ -17,6 +17,7 @@ from meshchatx.src.backend.config_manager import ConfigManager
 from meshchatx.src.backend.database import Database, merge_health_issues
 from meshchatx.src.backend.docs_manager import DocsManager
 from meshchatx.src.backend.forwarding_manager import ForwardingManager
+from meshchatx.src.backend.instance_defaults import seed_identity_config
 from meshchatx.src.backend.integrity_manager import (
     CriticalIntegrityError,
     IntegrityManager,
@@ -212,6 +213,19 @@ class IdentityContext:
 
         # 3. Initialize Config and core managers
         self.config = ConfigManager(self.database)
+
+        # An instance that runs its own resolvers hands them to every identity
+        # it creates. Only keys this identity has never written are touched, so
+        # turning one of them off here stays off.
+        seeded = seed_identity_config(self.config, self.app.storage_dir)
+        if seeded:
+            RNS.log(
+                "Seeded instance defaults for "
+                + self.identity_hash
+                + ": "
+                + ", ".join(seeded),
+                RNS.LOG_DEBUG,
+            )
 
         if (
             hasattr(self.app, "gitea_base_url_override")

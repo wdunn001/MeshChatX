@@ -66,17 +66,115 @@ _used_stamps: dict[str, float] = {}
 _used_stamps_lock = threading.Lock()
 
 
+ENV_ENABLED = "MESHCHAT_STAMP_AUTH_ENABLED"
+ENV_HMAC_KEY = "MESHCHAT_STAMP_AUTH_HMAC_KEY"
+SETTINGS_HMAC_KEY = "stamp_auth_hmac_key"
+
+# Resolved once at startup by configure_stamp_auth. Kept in the process
+# because the challenge signing key has to be the same for the whole run of
+# the server: a key that changed between handing out a challenge and reading
+# the answer would reject every honest solution.
+_runtime: dict[str, Any] = {"enabled": None, "secret": None}
+
+
 def stamp_auth_enabled_from_env() -> bool:
-    return env_bool("MESHCHAT_STAMP_AUTH_ENABLED", False)
+    return env_bool(ENV_ENABLED, False)
 
 
-def stamp_auth_hmac_secret() -> str | None:
-    raw = os.environ.get("MESHCHAT_STAMP_AUTH_HMAC_KEY", "").strip()
+def _env_enabled_explicitly() -> bool:
+    """True when an operator set the switch themselves, either way."""
+    return os.environ.get(ENV_ENABLED, "").strip() != ""
+
+
+def _env_hmac_secret() -> str | None:
+    raw = os.environ.get(ENV_HMAC_KEY, "").strip()
     return raw or None
 
 
+def _stored_hmac_secret(storage_dir: str | None) -> str | None:
+    """The signing key kept beside the other app security settings.
+
+    Generated on first use so an operator does not have to invent one. A key
+    that lives only in the environment is the reason a redeploy that drops
+    one variable silently turns the whole gate off, which is exactly what this
+    avoids.
+    """
+    if not storage_dir:
+        return None
+    from meshchatx.src.backend.app_security_settings import (
+        load_app_security_settings,
+        update_app_security_raw,
+    )
+
+    try:
+        stored = load_app_security_settings(storage_dir).get(SETTINGS_HMAC_KEY)
+    except Exception:
+        stored = None
+    if isinstance(stored, str) and stored.strip():
+        return stored.strip()
+    generated = os.urandom(32).hex()
+    try:
+        update_app_security_raw(storage_dir, {SETTINGS_HMAC_KEY: generated})
+    except Exception:
+        # A key that cannot be written is still usable for this run. The next
+        # start generates another one, which only costs any challenge that was
+        # outstanding across the restart.
+        pass
+    return generated
+
+
+def configure_stamp_auth(
+    storage_dir: str | None,
+    *,
+    multiuser_enabled: bool = False,
+) -> bool:
+    """Decide whether onboarding needs a stamp, and with which key.
+
+    Sign up on a shared instance is open to anyone who can reach it, so the
+    proof of work is the only thing standing between a script and an unbounded
+    number of identities on someone else's machine. It is therefore on by
+    default wherever accounts are in use, rather than waiting for an
+    environment variable that a deployment can lose without anyone noticing.
+    An operator who sets the variable gets what they asked for either way.
+    """
+    if _env_enabled_explicitly():
+        enabled = stamp_auth_enabled_from_env()
+    else:
+        enabled = bool(multiuser_enabled)
+    signing_key = _env_hmac_secret()
+    if enabled and not signing_key:
+        signing_key = _stored_hmac_secret(storage_dir)
+    _runtime["enabled"] = bool(enabled and signing_key)
+    _runtime["secret"] = signing_key
+    return _runtime["enabled"]
+
+
+def stamp_auth_enabled() -> bool:
+    """True when a stamp is demanded on sign up and sign in.
+
+    Falls back to the environment when configure_stamp_auth has not run, so
+    importing this module in a test or a script behaves as it did before.
+    """
+    resolved = _runtime["enabled"]
+    if resolved is None:
+        return stamp_auth_enabled_from_env()
+    return bool(resolved)
+
+
+def stamp_auth_hmac_secret() -> str | None:
+    if _runtime["secret"]:
+        return _runtime["secret"]
+    return _env_hmac_secret()
+
+
+def reset_stamp_auth_configuration() -> None:
+    """Forget what configure_stamp_auth resolved. For tests."""
+    _runtime["enabled"] = None
+    _runtime["secret"] = None
+
+
 def stamp_auth_configured() -> bool:
-    return stamp_auth_enabled_from_env() and bool(stamp_auth_hmac_secret())
+    return stamp_auth_enabled() and bool(stamp_auth_hmac_secret())
 
 
 def stamp_auth_cost() -> int:
@@ -225,7 +323,7 @@ def stamp_error_response(code: str) -> web.Response:
 
 
 async def require_stamp_payload(request, data: dict) -> web.Response | None:
-    if not stamp_auth_enabled_from_env():
+    if not stamp_auth_enabled():
         return None
     payload = data.get("stamp_proof")
     ok, code = verify_stamp_submission(payload)
