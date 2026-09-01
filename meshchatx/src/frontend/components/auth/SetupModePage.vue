@@ -4,9 +4,7 @@
     <div class="flex items-center justify-center min-h-screen p-4">
         <div class="w-full max-w-lg space-y-4">
             <div class="space-y-1">
-                <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                    Who uses this instance?
-                </h1>
+                <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Who uses this instance?</h1>
                 <p class="text-sm text-gray-600 dark:text-gray-400">
                     Asked once. It decides whether anyone signs in, and how.
                 </p>
@@ -23,12 +21,7 @@
                             : 'border-gray-200 dark:border-gray-700'
                     "
                 >
-                    <input
-                        v-model="chosen"
-                        type="radio"
-                        :value="option.id"
-                        class="mt-1"
-                    />
+                    <input v-model="chosen" type="radio" :value="option.id" class="mt-1" />
                     <div>
                         <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
                             {{ option.title }}
@@ -50,19 +43,13 @@
                     Saved. Restart this instance to finish.
                 </div>
                 <p class="text-xs text-gray-600 dark:text-gray-400">
-                    Accounts change how every request is handled, and that is
-                    built when the app starts, so it has to come back before
-                    anyone can sign up. Once it is running again, the first
-                    person to sign up becomes the admin.
+                    Accounts change how every request is handled, and that is built when the app starts, so it has to
+                    come back before anyone can sign up. Once it is running again, the first person to sign up becomes
+                    the admin.
                 </p>
             </div>
 
-            <button
-                v-else
-                class="btn btn-primary w-full"
-                :disabled="!chosen || busy"
-                @click="save"
-            >
+            <button v-else class="btn btn-primary w-full" :disabled="!chosen || busy" @click="save">
                 {{ busy ? "Saving..." : "Continue" }}
             </button>
         </div>
@@ -74,14 +61,12 @@ const ALL_OPTIONS = [
     {
         id: "open",
         title: "Just me, no sign in",
-        description:
-            "Anyone who can reach this page can use it. Right for a machine only you touch.",
+        description: "Anyone who can reach this page can use it. Right for a machine only you touch.",
     },
     {
         id: "single",
         title: "Just me, with a password",
-        description:
-            "One password protects the whole app. Right when it is reachable from elsewhere on your network.",
+        description: "One password protects the whole app. Right when it is reachable from elsewhere on your network.",
     },
     {
         id: "accounts",

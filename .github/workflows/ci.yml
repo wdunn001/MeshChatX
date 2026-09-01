@@ -232,7 +232,13 @@ jobs:
             - name: Upload Linux build-check artifacts
               uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
               with:
-                  name: meshchatx-linux-build-check-${{ github.ref_name }}-${{ github.run_id }}
+                  # No ref_name here. An artifact name may not contain a
+                  # slash, so every branch with one in its name failed this
+                  # upload after the whole build had already succeeded. The
+                  # frontend artifact above already keys on the run instead.
+                  # The run id stays last so the download pattern in
+                  # validate-build-artifact still matches.
+                  name: meshchatx-linux-build-check-${{ github.run_attempt }}-${{ github.run_id }}
                   path: |
                       meshchatx/public/
                       build/exe/
