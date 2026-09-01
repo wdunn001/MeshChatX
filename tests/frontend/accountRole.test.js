@@ -124,10 +124,26 @@ describe("routeAllowed", () => {
 });
 
 describe("settingsSectionAllowed", () => {
-    const instanceOwned = [
+    // Withheld on a shared emergency onboarding portal. Most are stored per
+    // identity and would harm nobody else; they are withheld because a switch
+    // somebody does not understand can cost them their own line of contact.
+    const withheld = [
         "transport",
         "interfaces",
         "networkSecurity",
+        "visualiser",
+        "crawler",
+        "telephony",
+        "archiver",
+        "nomadRenderer",
+        "naming",
+        "strangerProtection",
+        "messages",
+        "notificationSounds",
+        "propagation",
+        "stickers",
+        "gifs",
+        "privacyData",
         "auth",
         "webExposure",
         "csp",
@@ -135,37 +151,26 @@ describe("settingsSectionAllowed", () => {
         "selftest",
         "infrastructure",
         "plugins",
-        "naming",
-    ];
-    const personal = [
-        "language",
-        "appearance",
         "battery",
-        "desktop",
-        "android",
-        "shortcuts",
-        "location",
-        "strangerProtection",
-        "messages",
-        "notificationSounds",
-        "propagation",
-        "stickers",
-        "gifs",
-        "visualiser",
-        "crawler",
-        "telephony",
-        "archiver",
-        "nomadRenderer",
-        "privacyData",
     ];
+    // Cannot cost anyone a conversation.
+    const personal = ["language", "appearance", "desktop", "android", "shortcuts", "location"];
 
-    it.each(instanceOwned)("hides %s from an ordinary hosted account", (key) => {
+    it.each(withheld)("hides %s from an ordinary hosted account", (key) => {
         expect(settingsSectionAllowed(key, hosted("user"))).toBe(false);
         expect(settingsSectionAllowed(key, hosted("admin"))).toBe(true);
     });
 
     it.each(personal)("leaves %s available to an ordinary hosted account", (key) => {
         expect(settingsSectionAllowed(key, hosted("user"))).toBe(true);
+    });
+
+    it("leaves every section alone on an install the person runs themselves", () => {
+        // The way out of the narrow portal is the PWA or a desktop install,
+        // where the blast radius is their own machine.
+        for (const key of [...withheld, ...personal]) {
+            expect(settingsSectionAllowed(key, desktop)).toBe(true);
+        }
     });
 
     it("keeps banishment to contributors, since it blackholes on the shared instance", () => {

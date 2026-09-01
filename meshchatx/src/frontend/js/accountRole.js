@@ -100,15 +100,30 @@ export const ROUTE_MIN_ROLE = {
 };
 
 /**
- * Settings sections that configure the machine rather than the person.
- * Everything absent is a per identity preference and stays available.
+ * Settings sections a hosted account does not get, and why each one.
  *
- * Naming is here because on a hosted instance the operator points every
- * identity at their own resolvers, seeded by
- * meshchatx/src/backend/instance_defaults.py. It becomes editable again on an
- * install the person runs themselves.
+ * This portal is a shared onboarding resource for emergency communications.
+ * Two tests withhold a section, and a section needs to fail only one of them.
+ * They are listed separately below because the reason decides who gets it back
+ * and when, and because a section can fail one test while passing the other.
+ *
+ * Test one, reach: the setting changes the machine or the people on it.
+ * Test two, contact: a person could cut off their own line of contact with a
+ * switch they did not understand. On an emergency system that outcome is as
+ * serious as breaking it for everybody, and it needs no shared resource to
+ * happen.
+ *
+ * Test two is why this list is wider than the code strictly requires. Most of
+ * these are stored per identity and would harm nobody else. They are withheld
+ * anyway, because the cost of a wrong switch is a person who cannot be
+ * reached, and the administrator can make the adjustment for them.
+ *
+ * The way out is not a wider portal. Pulling down the PWA gives somebody the
+ * whole application on their own node, where all of this is theirs again and
+ * the blast radius is their own machine.
  */
 export const SETTINGS_SECTION_MIN_ROLE = {
+    // Reach. The shared radio and the instance's own exposure.
     transport: ROLE_ADMIN,
     interfaces: ROLE_ADMIN,
     networkSecurity: ROLE_ADMIN,
@@ -119,9 +134,49 @@ export const SETTINGS_SECTION_MIN_ROLE = {
     selftest: ROLE_ADMIN,
     infrastructure: ROLE_ADMIN,
     plugins: ROLE_ADMIN,
-    naming: ROLE_ADMIN,
+    // Reach. Sets bitrate limits on interfaces everyone is sharing.
+    battery: ROLE_ADMIN,
+    // Reach. Crawling NomadNet spends the shared radio on somebody else's
+    // behalf.
+    crawler: ROLE_ADMIN,
+    // Reach, and contact. This section carries the Reload RNS button, which
+    // restarts the stack under everyone signed in, alongside the propagation
+    // node choice that decides whether this person's messages get anywhere.
+    propagation: ROLE_ADMIN,
+    // Reach. Banishment blackholes an identity on the shared Reticulum
+    // instance, so it drops that peer for every account on the box. It is a
+    // moderation act rather than an administrative one, so it stops at
+    // contributor.
     blocked: ROLE_CONTRIBUTOR,
     banishment: ROLE_CONTRIBUTOR,
+    // Contact. Stranger protection decides who may reach this person at all.
+    // Wrong here and a legitimate contact never arrives, with nothing on
+    // screen to say why.
+    strangerProtection: ROLE_ADMIN,
+    // Contact. Delivery limits, retention and auto-resend all decide whether a
+    // message survives, and they sit beside settings that only change colours.
+    messages: ROLE_ADMIN,
+    // Contact. An inbound message nobody hears about is a message missed.
+    notificationSounds: ROLE_ADMIN,
+    // Contact. Naming is pointed at the operator's own resolvers by
+    // meshchatx/src/backend/instance_defaults.py. Repointing it is how a
+    // person stops being able to reach anyone by name.
+    naming: ROLE_ADMIN,
+    // Contact. Renderer and archiver settings decide whether pages arrive
+    // readable or at all.
+    nomadRenderer: ROLE_ADMIN,
+    archiver: ROLE_ADMIN,
+    // Contact. Call setup and codec choices decide whether a call connects.
+    telephony: ROLE_ADMIN,
+    // Contact. Data retention and purge can remove the history somebody needs.
+    privacyData: ROLE_ADMIN,
+    // Weakest case of the set, and the first to reconsider. Uploads land in
+    // this identity's own storage, so the reach is the machine's disk rather
+    // than anyone else's data, and nothing here costs a conversation. They are
+    // withheld for now because they sit in the same tab as the settings above.
+    stickers: ROLE_ADMIN,
+    gifs: ROLE_ADMIN,
+    visualiser: ROLE_ADMIN,
 };
 
 /** True when this account may open a route. */
