@@ -383,6 +383,7 @@ import {
     resolveAuthNavigation,
 } from "./js/authSessionSync.js";
 import { isHostedInstance, isInstanceAdmin } from "./js/accountRole.js";
+import { loadUiProfile, saveUiProfile } from "./js/uiProfile.js";
 
 function setBootSplashLine(text) {
     const splash = typeof document !== "undefined" ? document.getElementById("meshchatx-boot-splash") : null;
@@ -524,8 +525,49 @@ if (networkReady) {
         void import("./components/interfaces/InterfacesPage.vue");
     }
 
+    /**
+     * Put this person's stored preferences into the browser before anything
+     * reads them.
+     *
+     * It has to happen before mount. Components read localStorage as they set
+     * up, so restoring afterwards means the first paint uses defaults and then
+     * changes under the person. Only a hosted instance needs this: everywhere
+     * else the browser belongs to the one person using it, and their values
+     * were never cleared.
+     */
+    async function restoreUiProfileIfHosted() {
+        const status = await initialAuthStatusPromise;
+        if (!status || status.auth_mode !== "accounts" || !status.authenticated) {
+            return;
+        }
+        await loadUiProfile(window.api);
+    }
+
+    /**
+     * Keep the stored profile current without waiting for a clean sign out.
+     *
+     * A person on a borrowed machine closes the tab far more often than they
+     * press sign out, and visibilitychange is the last event a browser
+     * reliably gives before that.
+     */
+    function startUiProfileSaveOnHide() {
+        if (typeof document === "undefined") {
+            return;
+        }
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState !== "hidden") {
+                return;
+            }
+            if (!isHostedInstance(GlobalState) || !GlobalState.authenticated) {
+                return;
+            }
+            void saveUiProfile(window.api);
+        });
+    }
+
     function bootstrap() {
         registerMeshchatServiceWorker();
+        void restoreUiProfileIfHosted().finally(startUiProfileSaveOnHide);
         const splash = typeof document !== "undefined" ? document.getElementById("meshchatx-boot-splash") : null;
         try {
             createApp(App).use(router).use(vuetify).use(i18n).use(vClickOutside).mount("#app");

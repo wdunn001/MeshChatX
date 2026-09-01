@@ -8,6 +8,7 @@ import re
 
 from tests.backend.api_json_contract_schemas import (
     API_V1_APP_INFO_ENVELOPE_SCHEMA,
+    UI_PROFILE_ENVELOPE_SCHEMA,
     API_V1_STATUS_SCHEMA,
     AUTH_STATUS_SCHEMA,
     SELF_TEST_SCHEMA,
@@ -145,6 +146,7 @@ HTTP_JSON_GET_CONTRACTS: tuple[HttpJsonContract, ...] = (
     HttpJsonContract("GET", "/api/v1/app/info", API_V1_APP_INFO_ENVELOPE_SCHEMA),
     HttpJsonContract("GET", "/api/v1/app/sessions", ACTIVE_SESSIONS_SCHEMA),
     HttpJsonContract("GET", "/api/v1/app/changelog", CHANGELOG_SCHEMA),
+    HttpJsonContract("GET", "/api/v1/app/ui-profile", UI_PROFILE_ENVELOPE_SCHEMA),
     HttpJsonContract("GET", "/api/v1/auth/status", AUTH_STATUS_SCHEMA),
     HttpJsonContract("GET", "/api/v1/auth/csrf", CSRF_ENVELOPE_SCHEMA),
     HttpJsonContract(

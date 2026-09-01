@@ -98,6 +98,7 @@
 
 <script>
 import { solveStampChallenge } from "../../js/stampChallenge.js";
+import { clearBrowserState } from "../../js/uiProfile.js";
 import logoUrl from "../../assets/images/logo.png";
 
 export default {
@@ -216,6 +217,11 @@ export default {
             }
             try {
                 await window.api.post(path, body);
+                // This browser may be a borrowed one. Whatever the last person
+                // left in localStorage is theirs, not this person's, so it goes
+                // before the shell has a chance to read any of it. Their own
+                // values come back from the server once the shell starts.
+                clearBrowserState();
                 // A fresh sign in changes which identity the whole app is
                 // reading, so reload rather than navigate, to drop any state
                 // belonging to whoever was here before.

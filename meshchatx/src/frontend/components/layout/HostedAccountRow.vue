@@ -36,6 +36,7 @@ import GlobalState from "../../js/GlobalState.js";
 import MaterialDesignIcon from "../MaterialDesignIcon.vue";
 import ToastUtils from "../../js/ToastUtils.js";
 import { isHostedInstance } from "../../js/accountRole.js";
+import { clearBrowserState, saveUiProfile } from "../../js/uiProfile.js";
 
 export default {
     name: "HostedAccountRow",
@@ -61,6 +62,9 @@ export default {
                 return;
             }
             this.busy = true;
+            // Keep this person's preferences before the browser is cleared,
+            // so signing back in restores them instead of starting over.
+            await saveUiProfile(window.api);
             try {
                 await window.api.post("/api/v1/multiuser/logout", {});
             } catch (e) {
@@ -70,6 +74,10 @@ export default {
                 console.log("Sign out request failed:", e);
                 ToastUtils.error(this.$t("accounts.sign_out_failed"));
             }
+            // Whether or not the server heard, this browser stops carrying
+            // anything of theirs. On a borrowed machine that is the half that
+            // matters.
+            clearBrowserState();
             window.location.href = "/";
         },
     },

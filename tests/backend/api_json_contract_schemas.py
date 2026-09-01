@@ -325,6 +325,23 @@ SELF_TEST_SCHEMA: dict = {
     "additionalProperties": False,
 }
 
+UI_PROFILE_ENVELOPE_SCHEMA = {
+    "type": "object",
+    "required": ["profile"],
+    "properties": {
+        # The browser-local preferences kept per identity, so a shared terminal
+        # can be cleared between people. Values are the raw localStorage
+        # strings, so the shape stays open on purpose: the frontend registry in
+        # meshchatx/src/frontend/js/uiProfile.js decides which keys are known,
+        # and it refuses anything it does not recognise on the way back in.
+        "profile": {
+            "type": "object",
+            "additionalProperties": {"type": "string"},
+        },
+    },
+}
+
+
 API_V1_APP_INFO_ENVELOPE_SCHEMA: dict = {
     "type": "object",
     "required": ["app_info"],
