@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: 0BSD
 
-"""Oracle: a new multi-user account's identity announces under the username
-the person just typed, not the desktop default of "Anonymous Peer".
+"""Oracle: a new account announces under the username the person typed.
+
+The desktop default of "Anonymous Peer" must not reach a fresh hosted
+account at any point.
 
 The sign-up form already collects a username, so the point of this coverage
 is that registration hands it straight to the new identity as its display
@@ -90,9 +92,11 @@ async def test_register_passes_username_as_display_name(mock_app):
 
 @pytest.mark.asyncio
 async def test_register_does_not_default_to_anonymous_peer(mock_app):
-    """Direct regression for the reported symptom: a fresh account must not
-    be handed the desktop default display name at any point in the path
-    from sign-up form to identity_manager call."""
+    """Regress the reported symptom directly.
+
+    A fresh account must not be handed the desktop default display name
+    at any point in the path from sign-up form to identity_manager call.
+    """
     server, calls = await _build_multiuser_client(mock_app)
     async with TestClient(server) as client:
         headers = await fetch_api_csrf_headers(client)
@@ -108,7 +112,7 @@ async def test_register_does_not_default_to_anonymous_peer(mock_app):
 
 
 def test_create_identity_persists_display_name_to_config_and_metadata():
-    """IdentityManager.create_identity, unmocked: does the write survive?
+    """Check that an unmocked create_identity write survives to both stores.
 
     ctx.config.display_name.get() (read at announce time, meshchat.py
     announce()) resolves through ConfigDAO against the identity's own
@@ -137,9 +141,11 @@ def test_create_identity_persists_display_name_to_config_and_metadata():
 
 
 def test_create_identity_without_display_name_still_defaults_to_anonymous_peer():
-    """The desktop path (no username to draw from) is unchanged: a fresh
-    identity created without a display name still gets the historical
-    default, both in config and metadata."""
+    """Leave the desktop path, which has no username to draw from, alone.
+
+    An identity created without a display name still gets the historical
+    default, both in config and metadata.
+    """
     with tempfile.TemporaryDirectory() as tmp:
         manager = IdentityManager(tmp)
         created = manager.create_identity()

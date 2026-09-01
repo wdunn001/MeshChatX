@@ -2518,7 +2518,12 @@
         "tab_content_mismatch": "Questa scheda non era sincronizzata e viene ricaricata",
         "tab_restore_failed": "Impossibile ripristinare la pagina di questa scheda",
         "open_node_failed": "Impossibile aprire il nodo NomadNet",
-        "hide_source": "Nascondi sorgente"
+        "hide_source": "Nascondi sorgente",
+        "name_not_found": "Nessun risolutore conosce questo nome: ",
+        "name_ambiguous": "Piu di una identita ha registrato questo nome, quindi non e stato usato. Naviga invece per hash di destinazione: ",
+        "name_resolver_unreachable": "Non e stato possibile raggiungere un risolutore per cercare: ",
+        "name_resolution_off": "La risoluzione dei nomi e disattivata. Aggiungi un risolutore in Impostazioni, NomadNet, per navigare per nome: ",
+        "load_phase_resolving_name": "Ricerca del nome presso un risolutore"
     },
     "forwarder": {
         "title": "Inoltro LXMF",
@@ -4356,7 +4361,11 @@
         "stamp_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
         "stamp_progress": "{attempts} attempts, {seconds}s so far",
         "stamp_failed": "That proof of work failed. Try again.",
-        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again."
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
+        "signed_in_as": "Accesso eseguito come",
+        "sign_out": "Esci",
+        "signing_out": "Uscita in corso",
+        "sign_out_failed": "La disconnessione non ha raggiunto il server. Questo browser e stato comunque svuotato."
     },
     "post_install": {
         "windows_screen_security_title": "Attivare la sicurezza schermo di Windows?",
@@ -4460,5 +4469,45 @@
         "delete": "Elimina",
         "delete_confirm": "Eliminare \"{name}\" dalla cartella di sincronizzazione?",
         "delete_done": "Eliminato"
+    },
+    "hosted_welcome": {
+        "address_body": "Chiunque abbia questo indirizzo puo raggiungerti. Appartiene a te.",
+        "address_label": "Il tuo indirizzo",
+        "close": "Chiudi",
+        "copy_address": "Copia indirizzo",
+        "find_body": "Per raggiungere qualcuno ti serve il suo indirizzo. Condividi il tuo, oppure guarda chi altro e qui.",
+        "name_body": "Questo e il nome che gli altri vedono quando il tuo indirizzo compare in rete.",
+        "name_label": "Appari come",
+        "open_announces": "Guarda chi altro e qui",
+        "show_qr": "Mostra codice QR",
+        "title": "Sei sulla mesh"
+    },
+    "accounts_admin": {
+        "description": "Tutte le persone che possono accedere a questa istanza.",
+        "disabled": "Disattivato",
+        "empty": "Ancora nessun account.",
+        "enabled": "Attivo",
+        "identity": "Identita",
+        "last_login": "Ultimo accesso",
+        "load_failed": "Non e stato possibile caricare l elenco degli account",
+        "never": "Mai",
+        "registration_closed_help": "Nessun nuovo utente puo creare un account dalla pagina di accesso.",
+        "registration_open_help": "Chiunque raggiunga questa istanza puo creare un account.",
+        "registration_title": "Registrazioni",
+        "registration_toggle": "Permetti a chiunque di creare un account",
+        "remove": "Rimuovi",
+        "remove_confirm": "Rimuovere {username}? La sua identita e i suoi messaggi restano su questa macchina.",
+        "removed": "Account rimosso",
+        "role": "Ruolo",
+        "role_admin": "Amministratore",
+        "role_contributor": "Collaboratore",
+        "role_help": "Un utente raggiunge i propri messaggi e la mesh. Un collaboratore pubblica anche sul nodo condiviso e gestisce i bot. Un amministratore gestisce l istanza.",
+        "role_user": "Utente",
+        "status": "Stato",
+        "title": "Account",
+        "update_failed": "La modifica e stata rifiutata",
+        "updated": "Account aggiornato",
+        "username": "Nome utente",
+        "you": "Tu"
     }
 }

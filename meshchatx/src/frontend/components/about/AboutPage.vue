@@ -841,7 +841,7 @@
                     </div>
 
                     <!-- Database Health -->
-                    <div class="about-section">
+                    <div v-if="canMaintainInstance" class="about-section">
                         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-8">
                             <div
                                 class="text-xs font-black text-blue-500 uppercase tracking-[0.2em] flex items-center gap-2"
@@ -1228,6 +1228,8 @@ import DialogUtils from "../../js/DialogUtils";
 import ToastUtils from "../../js/ToastUtils";
 import DownloadUtils from "../../js/DownloadUtils";
 import GlobalEmitter from "../../js/GlobalEmitter";
+import GlobalState from "../../js/GlobalState.js";
+import { isInstanceAdmin } from "../../js/accountRole.js";
 import { onWsEvent, offWsEvent } from "../../js/registries/wsEventRegistry.js";
 import {
     appBatteryUsageToneClass,
@@ -1302,6 +1304,11 @@ export default {
     computed: {
         isElectron() {
             return ElectronUtils.isElectron();
+        },
+        canMaintainInstance() {
+            // True everywhere one person operates their own node, and only for
+            // the operator on a shared instance.
+            return isInstanceAdmin(GlobalState);
         },
         aboutDisplayVersion() {
             const info = this.appInfo || {};
@@ -1437,9 +1444,14 @@ export default {
     mounted() {
         this.getAppInfo();
         this.getActiveSessions();
-        this.getDatabaseHealth();
-        this.listSnapshots();
-        this.listAutoBackups();
+        // Backups, snapshots and vacuuming operate on the machine's storage,
+        // which on a shared instance belongs to whoever runs it. The backend
+        // refuses these calls from an ordinary account, so they are not made.
+        if (this.canMaintainInstance) {
+            this.getDatabaseHealth();
+            this.listSnapshots();
+            this.listAutoBackups();
+        }
         this._batterySaverPrefsHandler = (prefs) => {
             this.batterySaverPrefs = prefs || loadBatterySaverPrefs();
             this.restartAboutPollIntervals();

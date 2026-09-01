@@ -2464,7 +2464,12 @@
         "tab_content_mismatch": "Cet onglet était désynchronisé et est en cours de rechargement",
         "tab_restore_failed": "Impossible de restaurer la page de cet onglet",
         "open_node_failed": "Impossible d'ouvrir le nœud NomadNet",
-        "hide_source": "Masquer le code source"
+        "hide_source": "Masquer le code source",
+        "name_not_found": "Aucun resolveur ne connait ce nom : ",
+        "name_ambiguous": "Plus d une identite a enregistre ce nom, il n a donc pas ete utilise. Naviguez plutot par empreinte de destination : ",
+        "name_resolver_unreachable": "Impossible de joindre un resolveur pour rechercher : ",
+        "name_resolution_off": "La resolution de noms est desactivee. Ajoutez un resolveur dans Parametres, NomadNet, pour naviguer par nom : ",
+        "load_phase_resolving_name": "Recherche du nom aupres d un resolveur"
     },
     "forwarder": {
         "title": "Expéditeur LXMF",
@@ -4356,7 +4361,11 @@
         "stamp_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
         "stamp_progress": "{attempts} attempts, {seconds}s so far",
         "stamp_failed": "That proof of work failed. Try again.",
-        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again."
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
+        "signed_in_as": "Connecte en tant que",
+        "sign_out": "Se deconnecter",
+        "signing_out": "Deconnexion en cours",
+        "sign_out_failed": "La deconnexion n a pas atteint le serveur. Ce navigateur a quand meme ete vide."
     },
     "post_install": {
         "windows_screen_security_title": "Activer la sécurité d’écran Windows ?",
@@ -4460,5 +4469,45 @@
         "delete": "Supprimer",
         "delete_confirm": "Supprimer « {name} » du dossier de synchronisation ?",
         "delete_done": "Supprimé"
+    },
+    "hosted_welcome": {
+        "address_body": "Toute personne qui a cette adresse peut vous joindre. Elle vous appartient.",
+        "address_label": "Votre adresse",
+        "close": "Fermer",
+        "copy_address": "Copier l adresse",
+        "find_body": "Pour joindre quelqu un il vous faut son adresse. Partagez la votre, ou regardez qui d autre est ici.",
+        "name_body": "C est le nom que les autres voient quand votre adresse apparait sur le reseau.",
+        "name_label": "Vous apparaissez comme",
+        "open_announces": "Voir qui d autre est ici",
+        "show_qr": "Afficher le code QR",
+        "title": "Vous etes sur le maillage"
+    },
+    "accounts_admin": {
+        "description": "Toutes les personnes qui peuvent se connecter a cette instance.",
+        "disabled": "Desactive",
+        "empty": "Aucun compte pour le moment.",
+        "enabled": "Actif",
+        "identity": "Identite",
+        "last_login": "Derniere connexion",
+        "load_failed": "La liste des comptes n a pas pu etre chargee",
+        "never": "Jamais",
+        "registration_closed_help": "Personne de nouveau ne peut creer un compte depuis la page de connexion.",
+        "registration_open_help": "Toute personne qui atteint cette instance peut creer un compte.",
+        "registration_title": "Inscriptions",
+        "registration_toggle": "Autoriser tout le monde a creer un compte",
+        "remove": "Supprimer",
+        "remove_confirm": "Supprimer {username} ? Son identite et ses messages restent sur cette machine.",
+        "removed": "Compte supprime",
+        "role": "Role",
+        "role_admin": "Administrateur",
+        "role_contributor": "Contributeur",
+        "role_help": "Un utilisateur atteint ses propres messages et le maillage. Un contributeur publie en plus sur le noeud partage et fait tourner des bots. Un administrateur gere l instance.",
+        "role_user": "Utilisateur",
+        "status": "Etat",
+        "title": "Comptes",
+        "update_failed": "Cette modification a ete refusee",
+        "updated": "Compte mis a jour",
+        "username": "Nom d utilisateur",
+        "you": "Vous"
     }
 }

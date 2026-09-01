@@ -429,6 +429,14 @@
         <IntegrityWarningModal />
         <ChangelogModal ref="changelogModal" :app-version="appInfo?.version" />
         <TutorialModal ref="tutorialModal" />
+        <HostedWelcomeCard
+            ref="hostedWelcomeCard"
+            :address="config?.lxmf_address_hash || ''"
+            :display-name="displayName || ''"
+            @copy-address="copyValue($event, $t('app.lxmf_address'))"
+            @show-qr="openLxmfQr"
+            @seen="markHostedWelcomeSeen"
+        />
         <AndroidStorageChoicePrompt
             ref="androidStorageUpgradePrompt"
             variant="upgrade"
@@ -529,6 +537,7 @@ import CommandPalette from "./CommandPalette.vue";
 import IntegrityWarningModal from "./IntegrityWarningModal.vue";
 import ChangelogModal from "./ChangelogModal.vue";
 import TutorialModal from "./TutorialModal.vue";
+import HostedWelcomeCard from "./onboarding/HostedWelcomeCard.vue";
 import AndroidStorageChoicePrompt from "./AndroidStorageChoicePrompt.vue";
 import PostInstallPromptHost from "./PostInstallPromptHost.vue";
 import AppShellBanners from "./layout/AppShellBanners.vue";
@@ -539,6 +548,7 @@ import AppSidebarClassicNav from "./layout/AppSidebarClassicNav.vue";
 import AppSidebarClassicFooter from "./layout/AppSidebarClassicFooter.vue";
 import KeyboardShortcuts from "../js/KeyboardShortcuts";
 import ElectronUtils from "../js/ElectronUtils";
+import { accountAllows, isHostedInstance, isInstanceAdmin, navEntryAllowed } from "../js/accountRole.js";
 import {
     shouldShowLanBindNoAuthBanner,
     dismissLanBindNoAuthBanner,
@@ -593,6 +603,7 @@ export default {
         IntegrityWarningModal,
         ChangelogModal,
         TutorialModal,
+        HostedWelcomeCard,
         AndroidStorageChoicePrompt,
         PostInstallPromptHost,
         AppShellBanners,
@@ -831,12 +842,22 @@ export default {
                 !this.isStandaloneRoute
             );
         },
+        firstRunGuideSeen() {
+            // Two acknowledgements, one per guide, so dismissing the hosted
+            // welcome card never silences the desktop tour for somebody who
+            // later runs their own install from the same identity.
+            if (isHostedInstance(GlobalState)) {
+                return Boolean(this.appInfo?.hosted_onboarding_welcome_seen);
+            }
+            return Boolean(this.appInfo?.tutorial_seen);
+        },
         showLanBindNoAuthBanner() {
             return shouldShowLanBindNoAuthBanner({
                 dismissed: this.lanBindNoAuthBannerDismissed,
                 isElectron: ElectronUtils.isElectron(),
                 isAndroid: isMeshChatXAndroid(),
                 authEnabled: GlobalState.authEnabled,
+                authMode: GlobalState.authMode,
                 isLoopbackBind: GlobalState.isLoopbackBind,
                 routeName: this.$route?.name,
                 isStandaloneRoute: this.isStandaloneRoute,
@@ -995,7 +1016,13 @@ export default {
             if (item.visibleWhen === "rrcEnabled") {
                 return this.rrcEnabled;
             }
-            return true;
+            if (item.visibleWhen === "hostedInstance" && !isHostedInstance(GlobalState)) {
+                return false;
+            }
+            // On a shared instance the account's role decides which pages
+            // exist for this person. Everywhere else this opens, because one
+            // person operating their own node holds no role at all.
+            return navEntryAllowed(item, GlobalState);
         },
         enterSidebarNavEdit() {
             if (this.isSidebarCollapsed || this.isSidebarNavEditing) {
@@ -1661,9 +1688,33 @@ export default {
         onShowChangelogShell() {
             this.$refs.changelogModal?.show();
         },
+        showFirstRunGuide() {
+            // A hosted visitor operates nothing on this machine, so the eight
+            // step setup tour would walk them through changing a network they
+            // share with everyone else signed in. They get the welcome card
+            // instead. Designed in docs/hosted-onboarding-journey.md.
+            if (isHostedInstance(GlobalState)) {
+                this.$refs.hostedWelcomeCard?.show();
+                return;
+            }
+            this.$refs.tutorialModal?.show();
+        },
+        async markHostedWelcomeSeen() {
+            try {
+                await window.api.post("/api/v1/app/hosted-onboarding/welcome/seen", {});
+                if (this.appInfo) {
+                    this.appInfo.hosted_onboarding_welcome_seen = true;
+                }
+            } catch (e) {
+                // Not worth telling anyone about. The card reappears on the
+                // next sign in, which is a smaller cost than an error toast
+                // over the first thing they ever saw.
+                console.log("Failed to record the welcome card as seen:", e);
+            }
+        },
         onShowTutorialShell() {
             this.skipChangelogAfterTutorial = false;
-            this.$refs.tutorialModal?.show();
+            this.showFirstRunGuide();
         },
         onTutorialFinishedShell() {
             this.skipChangelogAfterTutorial = true;
@@ -1983,7 +2034,7 @@ export default {
                 // check URL params for modal triggers
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.has("show-guide")) {
-                    this.$refs.tutorialModal.show();
+                    this.showFirstRunGuide();
                     // remove param from URL
                     urlParams.delete("show-guide");
                     const newUrl = window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : "");
@@ -1997,8 +2048,8 @@ export default {
                 } else if (!this.hasCheckedForModals) {
                     // check if we should show tutorial or changelog (only on first load)
                     this.hasCheckedForModals = true;
-                    if (this.appInfo && !this.appInfo.tutorial_seen) {
-                        this.$refs.tutorialModal.show();
+                    if (this.appInfo && !this.firstRunGuideSeen) {
+                        this.showFirstRunGuide();
                     } else if (this.maybeShowAndroidStorageUpgrade()) {
                         // upgrade prompt for existing internal-storage installs
                     } else if (await this.maybeShowPostInstallPrompt()) {
@@ -2006,6 +2057,10 @@ export default {
                     } else if (
                         this.appInfo &&
                         !this.skipChangelogAfterTutorial &&
+                        // What changed in a release is a question for whoever
+                        // upgraded the instance. On a shared one that is not
+                        // the person who just signed in.
+                        (!isHostedInstance(GlobalState) || isInstanceAdmin(GlobalState)) &&
                         this.appInfo.changelog_seen_version !== "999.999.999" &&
                         this.appInfo.changelog_seen_version !== this.appInfo.version
                     ) {
@@ -2049,6 +2104,14 @@ export default {
             this.getConfig();
         },
         async getBlockedDestinations() {
+            // Banishment is contributor and above, because it blackholes an
+            // identity on the shared Reticulum instance. Asking for the list
+            // as an ordinary account is a 403 the UI would then have to
+            // explain, so it is not asked for.
+            if (!accountAllows(GlobalState, "contributor")) {
+                GlobalState.blockedDestinations = [];
+                return;
+            }
             try {
                 const response = await window.api.get("/api/v1/blocked-destinations");
                 GlobalState.blockedDestinations = response.data.blocked_destinations || [];

@@ -38,14 +38,18 @@ export default {
             type: Object,
             default: null,
         },
+        // The tabs worth showing. Passed in because a tab whose every section
+        // is unavailable to this account is an empty page, not a choice.
+        visibleTabs: {
+            type: Array,
+            default: null,
+        },
     },
     emits: ["select"],
-    data() {
-        return {
-            tabs: SETTINGS_TABS,
-        };
-    },
     computed: {
+        tabs() {
+            return this.visibleTabs || SETTINGS_TABS;
+        },
         searchActive() {
             return this.matchCounts != null;
         },

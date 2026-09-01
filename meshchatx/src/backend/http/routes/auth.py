@@ -221,8 +221,6 @@ def register_auth_routes(routes, app):
             available_modes,
         )
 
-        import sys
-
         # Served means an instance other people connect to: headless, and not
         # a packaged desktop build, which is also headless but is one person's
         # machine.
@@ -244,8 +242,6 @@ def register_auth_routes(routes, app):
         anyone who reaches the page later. An operator changes it by editing
         app_security.json and restarting.
         """
-        import sys
-
         from meshchatx.src.backend.multiuser import (
             auth_mode,
             available_modes,

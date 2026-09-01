@@ -52,6 +52,7 @@ DEFAULT_LIMITS = {
     "announce": {"max": 6, "window_seconds": 3600},
     "file_transfer": {"max": 10, "window_seconds": 3600},
     "call": {"max": 10, "window_seconds": 3600},
+    "probe": {"max": 30, "window_seconds": 3600},
 }
 
 _hits: dict[tuple[str, str], list[float]] = {}

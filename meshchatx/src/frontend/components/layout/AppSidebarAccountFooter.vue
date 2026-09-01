@@ -119,7 +119,7 @@
                 </select>
             </div>
 
-            <div class="p-2">
+            <div v-if="canManageIdentities" class="p-2">
                 <RouterLink
                     :to="{ name: 'identities' }"
                     class="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
@@ -127,19 +127,25 @@
                     {{ $t("app.manage_identities") }}
                 </RouterLink>
             </div>
+
+            <HostedAccountRow />
         </div>
     </div>
 </template>
 
 <script>
+import GlobalState from "../../js/GlobalState.js";
 import MaterialDesignIcon from "../MaterialDesignIcon.vue";
 import LxmfUserIcon from "../LxmfUserIcon.vue";
+import HostedAccountRow from "./HostedAccountRow.vue";
+import { accountAllows } from "../../js/accountRole.js";
 
 export default {
     name: "AppSidebarAccountFooter",
     components: {
         MaterialDesignIcon,
         LxmfUserIcon,
+        HostedAccountRow,
     },
     props: {
         config: {
@@ -176,9 +182,18 @@ export default {
             isExpanded: false,
         };
     },
+    computed: {
+        canManageIdentities() {
+            // Every identity on the machine, including other people's. On a
+            // shared instance that belongs to whoever runs it, and switching
+            // to another one would also break the account binding this
+            // session was signed in under.
+            return accountAllows(GlobalState, "admin");
+        },
+    },
     methods: {
         onAccountChipClick() {
-            if (this.isCollapsed) {
+            if (this.isCollapsed && this.canManageIdentities) {
                 this.$router.push({ name: "identities" });
                 return;
             }

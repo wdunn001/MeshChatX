@@ -276,6 +276,11 @@ const router = createRouter({
             component: () => import("./components/settings/SettingsPage.vue"),
         },
         {
+            name: "accounts-admin",
+            path: "/accounts-admin",
+            component: () => import("./components/accounts/AccountsAdminPage.vue"),
+        },
+        {
             name: "identities",
             path: "/identities",
             component: () => import("./components/settings/IdentitiesPage.vue"),

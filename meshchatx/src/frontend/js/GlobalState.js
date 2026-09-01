@@ -16,6 +16,13 @@ const globalState = reactive({
     authModeResolved: false,
     isLoopbackBind: true,
     authenticated: false,
+    // The signed-in account, on an instance running in accounts mode. Null on
+    // every other build, where one person operates their own node and there
+    // are no roles to hold. Read from /api/v1/multiuser/status.
+    accountRole: null,
+    accountUsername: null,
+    accountIdentityHash: null,
+    accountRegistrationOpen: true,
     pluginsEnabled: true,
     detailedOutboundSendStatus: false,
     outboundTransferProgressEnabled: true,

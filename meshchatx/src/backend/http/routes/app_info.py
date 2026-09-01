@@ -513,6 +513,14 @@ def register_app_info_routes(routes, app):
                     "user_guidance": _safe_user_guidance(),
                     "tutorial_seen": _safe_config_get("tutorial_seen", "false")
                     == "true",
+                    # The hosted welcome card stands in for the desktop tour on
+                    # a shared instance, and is acknowledged separately so that
+                    # neither one silences the other.
+                    "hosted_onboarding_welcome_seen": _safe_config_get(
+                        "hosted_onboarding_welcome_seen",
+                        "false",
+                    )
+                    == "true",
                     "changelog_seen_version": _safe_config_get(
                         "changelog_seen_version",
                         "0.0.0",
@@ -591,6 +599,15 @@ def register_app_info_routes(routes, app):
     async def app_tutorial_seen(request):
         app.config.set("tutorial_seen", True)
         return web.json_response({"message": "Tutorial marked as seen"})
+
+    # mark the hosted welcome card as seen
+    @routes.post("/api/v1/app/hosted-onboarding/welcome/seen")
+    async def app_hosted_welcome_seen(request):
+        # Per identity, like tutorial_seen beside it, so a shared browser does
+        # not carry one account's acknowledgement onto the next account that
+        # signs in. That is what localStorage would have done.
+        app.config.set("hosted_onboarding_welcome_seen", True)
+        return web.json_response({"message": "Welcome card marked as seen"})
 
     @routes.post("/api/v1/setup/storage-migration")
     async def setup_storage_migration(request):

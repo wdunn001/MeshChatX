@@ -1,4 +1,5 @@
 import GlobalState from "./GlobalState.js";
+import { routeAllowed } from "./accountRole.js";
 
 /** Max wait for auth status during navigation guards and reconnect resync. */
 export const AUTH_STATUS_TIMEOUT_MS = 10000;
@@ -22,6 +23,46 @@ export function applyAuthStatusToGlobalState(status) {
     }
     GlobalState.authSessionResolved = true;
     GlobalState.authModeResolved = true;
+}
+
+/**
+ * Copy the signed-in account from the multi-user status into GlobalState.
+ *
+ * The role is what the UI gates on, so that an ordinary person on a shared
+ * instance is not offered the pages their account cannot reach. The backend
+ * refuses those calls regardless, in
+ * meshchatx/src/backend/multiuser/permissions.py.
+ *
+ * @param {Record<string, unknown> | null | undefined} status
+ */
+export function applyMultiuserStatusToGlobalState(status) {
+    if (!status || typeof status !== "object") {
+        return;
+    }
+    const account = status.account && typeof status.account === "object" ? status.account : null;
+    GlobalState.accountRole = account?.role || null;
+    GlobalState.accountUsername = account?.username || null;
+    GlobalState.accountIdentityHash = account?.identity_hash || null;
+    GlobalState.accountRegistrationOpen = status.registration_open !== false;
+}
+
+/**
+ * Read the signed-in account, on an instance running in accounts mode.
+ *
+ * A failure leaves the account fields alone rather than clearing them, because
+ * a dropped request is not evidence that somebody's role has changed.
+ *
+ * @param {import("./apiClient.js").createApiClient} api
+ * @returns {Promise<Record<string, unknown> | null>}
+ */
+export async function fetchMultiuserStatus(api) {
+    try {
+        const response = await api.get("/api/v1/multiuser/status");
+        applyMultiuserStatusToGlobalState(response?.data);
+        return response?.data ?? null;
+    } catch {
+        return null;
+    }
 }
 
 /**
@@ -60,9 +101,7 @@ export function authNavigationTargetForStatus(to, status) {
     // First run has not chosen how this instance is used yet.
     if (!status.auth_mode && Array.isArray(status.auth_modes_available)) {
         if (status.auth_modes_available.includes("accounts")) {
-            return to.name === "setup-mode"
-                ? { allow: true }
-                : { redirect: "/setup-mode" };
+            return to.name === "setup-mode" ? { allow: true } : { redirect: "/setup-mode" };
         }
     }
     if (!status.auth_enabled) {
@@ -90,7 +129,24 @@ export async function resolveAuthNavigation(to, api) {
     try {
         const status = await fetchAuthStatus(api);
         applyAuthStatusToGlobalState(status);
-        return authNavigationTargetForStatus(to, status);
+        const target = authNavigationTargetForStatus(to, status);
+        if (target.allow !== true) {
+            return target;
+        }
+        // On a shared instance the role decides which pages exist for this
+        // person. It is read here, before the page mounts, so an ordinary
+        // account never opens a page whose every request the backend will
+        // refuse. Off a shared instance nothing is fetched and nothing is
+        // gated.
+        if (status.auth_mode === "accounts" && status.authenticated) {
+            if (!GlobalState.accountRole) {
+                await fetchMultiuserStatus(api);
+            }
+            if (!routeAllowed(to.name, GlobalState)) {
+                return { redirect: "/messages" };
+            }
+        }
+        return target;
     } catch (e) {
         GlobalState.authSessionResolved = true;
         if (e.response?.status === 401 || e.response?.status === 403) {

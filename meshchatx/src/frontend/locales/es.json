@@ -2464,7 +2464,12 @@
         "tab_content_mismatch": "Esta pestaña estaba desincronizada y se está recargando",
         "tab_restore_failed": "No se pudo restaurar la página de esta pestaña",
         "open_node_failed": "No se pudo abrir el nodo NomadNet",
-        "hide_source": "Ocultar código"
+        "hide_source": "Ocultar código",
+        "name_not_found": "Ningun resolutor conoce este nombre: ",
+        "name_ambiguous": "Mas de una identidad ha registrado este nombre, asi que no se uso. Navega por hash de destino en su lugar: ",
+        "name_resolver_unreachable": "No se pudo contactar con un resolutor para consultar: ",
+        "name_resolution_off": "La resolucion de nombres esta desactivada. Anade un resolutor en Ajustes, NomadNet, para navegar por nombre: ",
+        "load_phase_resolving_name": "Consultando el nombre con un resolutor"
     },
     "forwarder": {
         "title": "Reenviador LXMF",
@@ -4356,7 +4361,11 @@
         "stamp_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
         "stamp_progress": "{attempts} attempts, {seconds}s so far",
         "stamp_failed": "That proof of work failed. Try again.",
-        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again."
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
+        "signed_in_as": "Sesion iniciada como",
+        "sign_out": "Cerrar sesion",
+        "signing_out": "Cerrando sesion",
+        "sign_out_failed": "El cierre de sesion no llego al servidor. Este navegador se ha limpiado igualmente."
     },
     "post_install": {
         "windows_screen_security_title": "¿Activar la seguridad de pantalla de Windows?",
@@ -4460,5 +4469,45 @@
         "delete": "Eliminar",
         "delete_confirm": "¿Eliminar \"{name}\" de la carpeta de sincronización?",
         "delete_done": "Eliminado"
+    },
+    "hosted_welcome": {
+        "address_body": "Cualquiera que tenga esta direccion puede contactarte. Es tuya.",
+        "address_label": "Tu direccion",
+        "close": "Cerrar",
+        "copy_address": "Copiar direccion",
+        "find_body": "Para contactar a alguien necesitas su direccion. Comparte la tuya, o mira quien mas esta aqui.",
+        "name_body": "Ese es el nombre que ven los demas cuando tu direccion aparece en la red.",
+        "name_label": "Apareces como",
+        "open_announces": "Ver quien mas esta aqui",
+        "show_qr": "Mostrar codigo QR",
+        "title": "Estas en la malla"
+    },
+    "accounts_admin": {
+        "description": "Todas las personas que pueden iniciar sesion en esta instancia.",
+        "disabled": "Desactivada",
+        "empty": "Todavia no hay cuentas.",
+        "enabled": "Activa",
+        "identity": "Identidad",
+        "last_login": "Ultimo inicio de sesion",
+        "load_failed": "No se pudo cargar la lista de cuentas",
+        "never": "Nunca",
+        "registration_closed_help": "Nadie nuevo puede crear una cuenta desde la pagina de inicio de sesion.",
+        "registration_open_help": "Cualquiera que alcance esta instancia puede crear una cuenta.",
+        "registration_title": "Registros",
+        "registration_toggle": "Permitir que cualquiera cree una cuenta",
+        "remove": "Eliminar",
+        "remove_confirm": "Eliminar a {username}? Su identidad y sus mensajes se quedan en esta maquina.",
+        "removed": "Cuenta eliminada",
+        "role": "Rol",
+        "role_admin": "Administrador",
+        "role_contributor": "Colaborador",
+        "role_help": "Un usuario alcanza sus propios mensajes y la malla. Un colaborador ademas publica en el nodo compartido y ejecuta bots. Un administrador gestiona la instancia.",
+        "role_user": "Usuario",
+        "status": "Estado",
+        "title": "Cuentas",
+        "update_failed": "Ese cambio fue rechazado",
+        "updated": "Cuenta actualizada",
+        "username": "Nombre de usuario",
+        "you": "Tu"
     }
 }

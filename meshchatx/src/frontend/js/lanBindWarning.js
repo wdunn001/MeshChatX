@@ -27,6 +27,13 @@ export function shouldShowLanBindNoAuthBanner({
     isElectron = false,
     isAndroid = false,
     authEnabled = false,
+    // How the instance decides who may use it. On a shared instance this is
+    // "accounts", and every API path is already closed to anyone without a
+    // session, so the banner would be telling a signed-in person something
+    // untrue about the instance they just signed in to. The single password
+    // flag above stays false in that mode, so it cannot answer this on its
+    // own.
+    authMode = null,
     isLoopbackBind = true,
     routeName = "",
     dismissed = false,
@@ -44,7 +51,7 @@ export function shouldShowLanBindNoAuthBanner({
     if (routeName === "auth" || isStandaloneRoute) {
         return false;
     }
-    if (authEnabled) {
+    if (authEnabled || authMode === "accounts") {
         return false;
     }
     return isLoopbackBind === false;

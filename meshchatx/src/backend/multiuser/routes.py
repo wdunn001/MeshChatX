@@ -9,7 +9,6 @@ identity is the point: it is what gives someone an LXMF address, so they can
 reach the outside world through this instance rather than merely log into it.
 """
 
-import time
 
 from aiohttp import web
 from aiohttp_session import get_session
@@ -18,6 +17,7 @@ from meshchatx.src.backend.multiuser import (
     ROLE_USER,
     is_enabled,
     registration_open,
+    set_registration_open,
 )
 from meshchatx.src.backend.multiuser.accounts import (
     AccountError,
@@ -243,6 +243,69 @@ def register_multiuser_routes(routes, app):
         except AccountError as exc:
             return web.json_response({"error": str(exc)}, status=400)
         return web.json_response({"message": "Updated"})
+
+    @routes.delete("/api/v1/multiuser/accounts/{account_id}")
+    async def multiuser_account_delete(request):
+        try:
+            account_id = int(request.match_info["account_id"])
+        except (KeyError, TypeError, ValueError):
+            return web.json_response({"error": "Unknown account"}, status=404)
+
+        target = None
+        for row in store.list_accounts():
+            if row["id"] == account_id:
+                target = row
+                break
+        if target is None:
+            return web.json_response({"error": "Unknown account"}, status=404)
+
+        # Same reason the update route refuses: an instance with no admin
+        # cannot be administered afterwards.
+        if target["role"] == "admin" and store.admin_count() <= 1:
+            return web.json_response(
+                {"error": "This is the only admin, so it cannot be removed"},
+                status=409,
+            )
+
+        session = await get_session(request)
+        if session.get("username") == target["username"]:
+            return web.json_response(
+                {"error": "Sign out rather than removing the account you are using"},
+                status=409,
+            )
+
+        store.delete(account_id)
+        # The identity and its messages stay on disk. Removing someone's keys
+        # because their account was closed destroys conversations other people
+        # are still part of, and it cannot be undone.
+        return web.json_response(
+            {
+                "message": "Removed",
+                "identity_hash": target["identity_hash"],
+                "identity_retained": True,
+            },
+        )
+
+    @routes.get("/api/v1/multiuser/registration")
+    async def multiuser_registration_get(request):
+        return web.json_response(
+            {"registration_open": registration_open(app.storage_dir)},
+        )
+
+    @routes.patch("/api/v1/multiuser/registration")
+    async def multiuser_registration_set(request):
+        try:
+            data = await request.json()
+        except Exception:
+            return web.json_response({"error": "Invalid request"}, status=400)
+        if not isinstance(data, dict) or "registration_open" not in data:
+            return web.json_response({"error": "Invalid request"}, status=400)
+        wanted = bool(data.get("registration_open"))
+        try:
+            set_registration_open(app.storage_dir, wanted)
+        except OSError as exc:
+            return web.json_response({"error": str(exc)}, status=503)
+        return web.json_response({"registration_open": wanted})
 
     @routes.post("/api/v1/multiuser/logout")
     async def multiuser_logout(request):

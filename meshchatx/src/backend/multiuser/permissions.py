@@ -65,7 +65,6 @@ USER_PREFIXES = (
     "/api/v1/page-nodes",
     "/api/v1/favourites",
     "/api/v1/contacts",
-    "/api/v1/blocked-destinations",
     "/api/v1/spam-keywords",
     "/api/v1/notifications",
     "/api/v1/notification-sounds",
@@ -78,12 +77,31 @@ USER_PREFIXES = (
     "/api/v1/translator",
     "/api/v1/filesync",
     "/api/v1/path-table",
+    # Reachability of one destination. It spends a little airtime, so it is
+    # metered below in the same way an announce is, rather than left open.
+    "/api/v1/ping",
+)
+
+# Read-only views of the shared machine. Granted for GET because the Network
+# Visualiser is a page an ordinary person is meant to use, and it cannot draw
+# anything without knowing which interfaces exist and how much has moved over
+# them. Writing to any of these stays admin, which is why they are a separate
+# list rather than entries in USER_PREFIXES above.
+USER_READ_PREFIXES = (
+    "/api/v1/interface-stats",
+    "/api/v1/reticulum/discovered-interfaces",
 )
 
 # Publishing and automation. Speaks in the instance's name, so it is a step up
 # in trust rather than in privilege.
 CONTRIBUTOR_PREFIXES = (
     "/api/v1/bots",
+    # Banishment is not a personal mute. It calls blackhole_identity on the
+    # shared Reticulum instance, so one person banishing a peer drops that
+    # peer for everyone signed in to this machine. An ordinary account mutes
+    # someone through the per identity message blocklist and spam keywords
+    # instead, which are theirs alone and stay in USER_PREFIXES above.
+    "/api/v1/blocked-destinations",
 )
 
 # Reading the shared node's pages is browsing. Writing to it is publishing.
@@ -114,6 +132,8 @@ def required_role(method: str, path: str) -> str:
     if method in _WRITE_METHODS and _matches(path, CONTRIBUTOR_WRITE_PREFIXES):
         return ROLE_CONTRIBUTOR
     if _matches(path, USER_PREFIXES):
+        return ROLE_USER
+    if method not in _WRITE_METHODS and _matches(path, USER_READ_PREFIXES):
         return ROLE_USER
     return ROLE_ADMIN
 

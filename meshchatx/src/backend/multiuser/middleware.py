@@ -35,6 +35,7 @@ _LIMITED_PATHS = (
     ("POST", "/api/v1/telephone/call/", "call"),
     ("POST", "/api/v1/filesync/upload", "file_transfer"),
     ("POST", "/api/v1/filesync/start", "file_transfer"),
+    ("GET", "/api/v1/ping/", "probe"),
 )
 
 

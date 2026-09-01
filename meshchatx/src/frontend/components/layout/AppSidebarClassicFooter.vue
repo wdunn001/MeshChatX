@@ -131,6 +131,12 @@
                     </div>
                 </div>
             </div>
+            <div
+                v-if="!isCollapsed"
+                class="border-t border-gray-200 text-gray-900 dark:text-zinc-200 dark:border-zinc-800"
+            >
+                <HostedAccountRow />
+            </div>
         </div>
     </div>
 </template>
@@ -138,12 +144,14 @@
 <script>
 import MaterialDesignIcon from "../MaterialDesignIcon.vue";
 import LxmfUserIcon from "../LxmfUserIcon.vue";
+import HostedAccountRow from "./HostedAccountRow.vue";
 
 export default {
     name: "AppSidebarClassicFooter",
     components: {
         MaterialDesignIcon,
         LxmfUserIcon,
+        HostedAccountRow,
     },
     props: {
         config: {

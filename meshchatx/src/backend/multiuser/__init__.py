@@ -68,6 +68,18 @@ def registration_open(storage_dir: str | None) -> bool:
         return True
 
 
+def set_registration_open(storage_dir: str, wanted: bool) -> None:
+    """Open or close sign ups, without disturbing the rest of the settings.
+
+    Written the same way save_auth_mode below writes, because
+    save_app_security_settings only persists the two allowlist keys it knows
+    about and silently drops everything else.
+    """
+    from meshchatx.src.backend.app_security_settings import update_app_security_raw
+
+    update_app_security_raw(storage_dir, {REGISTRATION_KEY: bool(wanted)})
+
+
 # How an instance decides who may use it. Chosen once, at first run.
 MODE_OPEN = "open"            # no sign in, the historical default
 MODE_SINGLE = "single"        # one shared password, the existing app auth

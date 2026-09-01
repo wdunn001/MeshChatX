@@ -1,8 +1,17 @@
 # Hosted onboarding journey
 
-This is a design document. Nothing described here is built. It is the starting
-point for implementation. Every section below is a proposal that still has to be
-reviewed, built, and shipped.
+This is a design document. Implementation has started against it.
+
+Two increments from section 10.3 are built. Increment 1 is the hosted welcome
+card in section 6. Increment 4 is sign out. Increments 2, 3, 5, 6 and 7 are
+still proposals awaiting review and implementation.
+
+Two things landed alongside those without being increments in this plan. Nav
+entries, routes and settings sections are now gated on the account's role
+through meshchatx/src/frontend/js/accountRole.js. That file mirrors
+meshchatx/src/backend/multiuser/permissions.py. An admin page at
+meshchatx/src/frontend/components/accounts/AccountsAdminPage.vue lists the
+accounts and their roles.
 
 ## 1. Scope
 
