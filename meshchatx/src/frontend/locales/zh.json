@@ -4365,7 +4365,9 @@
         "signed_in_as": "当前登录身份",
         "sign_out": "退出登录",
         "signing_out": "正在退出",
-        "sign_out_failed": "退出请求没有送达服务器。此浏览器仍已清除。"
+        "sign_out_failed": "退出请求没有送达服务器。此浏览器仍已清除。",
+        "stamp_notice": "本实例会先要求你的浏览器完成一小段工作量证明。",
+        "stamp_done": "工作量证明已完成，用时 {seconds} 秒，尝试 {attempts} 次。"
     },
     "post_install": {
         "windows_screen_security_title": "启用 Windows 屏幕安全？",

@@ -4365,7 +4365,9 @@
         "signed_in_as": "Angemeldet als",
         "sign_out": "Abmelden",
         "signing_out": "Wird abgemeldet",
-        "sign_out_failed": "Die Abmeldung hat den Server nicht erreicht. Dieser Browser wurde trotzdem geleert."
+        "sign_out_failed": "Die Abmeldung hat den Server nicht erreicht. Dieser Browser wurde trotzdem geleert.",
+        "stamp_notice": "Diese Instanz verlangt zuerst einen kleinen Arbeitsnachweis von deinem Browser.",
+        "stamp_done": "Arbeitsnachweis erbracht in {seconds}s, {attempts} Versuche."
     },
     "post_install": {
         "windows_screen_security_title": "Windows-Bildschirmsicherheit aktivieren?",

@@ -246,4 +246,53 @@ describe("AccountsAuthPage.vue", () => {
         // new one rather than needing an explicit reset step.
         expect(solveStampChallenge).toHaveBeenCalledTimes(2);
     });
+
+    // A cost 17 stamp finishes in well under a second on a desktop browser,
+    // so the progress row alone appeared and vanished between frames and the
+    // page looked to a person like it had asked for nothing at all.
+    it("says a proof of work is coming before anything is typed", async () => {
+        axiosMock.get = vi.fn(
+            respondFor({ registration_open: true, accounts: 1, signed_in: false }, { stamp_auth_enabled: true }),
+        );
+        window.api = axiosMock;
+
+        const wrapper = mountPage();
+        await wrapper.vm.$nextTick();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await wrapper.vm.$nextTick();
+
+        expect(wrapper.find('[data-testid="stamp-status"]').exists()).toBe(true);
+        expect(wrapper.text()).toContain("accounts.stamp_notice");
+    });
+
+    it("leaves the finished proof of work on screen after it solves", async () => {
+        axiosMock.get = vi.fn(
+            respondFor({ registration_open: true, accounts: 1, signed_in: false }, { stamp_auth_enabled: true }),
+        );
+        window.api = axiosMock;
+        solveStampChallenge.mockResolvedValue(SOLVED_PROOF);
+
+        const wrapper = mountPage();
+        await wrapper.vm.$nextTick();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await wrapper.vm.$nextTick();
+
+        wrapper.vm.mode = "login";
+        wrapper.vm.username = "alice";
+        wrapper.vm.password = "correct-horse";
+        await wrapper.vm.submit();
+        await wrapper.vm.$nextTick();
+
+        expect(wrapper.vm.stampSolved).toBe(true);
+        expect(wrapper.find('[data-testid="stamp-done"]').exists()).toBe(true);
+    });
+
+    it("shows nothing about proof of work on an instance that does not ask for it", async () => {
+        const wrapper = mountPage();
+        await wrapper.vm.$nextTick();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await wrapper.vm.$nextTick();
+
+        expect(wrapper.find('[data-testid="stamp-status"]').exists()).toBe(false);
+    });
 });

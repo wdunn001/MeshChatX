@@ -4365,7 +4365,9 @@
         "signed_in_as": "Sesion iniciada como",
         "sign_out": "Cerrar sesion",
         "signing_out": "Cerrando sesion",
-        "sign_out_failed": "El cierre de sesion no llego al servidor. Este navegador se ha limpiado igualmente."
+        "sign_out_failed": "El cierre de sesion no llego al servidor. Este navegador se ha limpiado igualmente.",
+        "stamp_notice": "Esta instancia pide primero a tu navegador una pequena prueba de trabajo.",
+        "stamp_done": "Prueba de trabajo completada en {seconds}s, {attempts} intentos."
     },
     "post_install": {
         "windows_screen_security_title": "¿Activar la seguridad de pantalla de Windows?",

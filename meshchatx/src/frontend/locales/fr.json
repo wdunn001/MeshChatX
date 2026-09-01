@@ -4365,7 +4365,9 @@
         "signed_in_as": "Connecte en tant que",
         "sign_out": "Se deconnecter",
         "signing_out": "Deconnexion en cours",
-        "sign_out_failed": "La deconnexion n a pas atteint le serveur. Ce navigateur a quand meme ete vide."
+        "sign_out_failed": "La deconnexion n a pas atteint le serveur. Ce navigateur a quand meme ete vide.",
+        "stamp_notice": "Cette instance demande d abord une petite preuve de travail a votre navigateur.",
+        "stamp_done": "Preuve de travail effectuee en {seconds}s, {attempts} tentatives."
     },
     "post_install": {
         "windows_screen_security_title": "Activer la sécurité d’écran Windows ?",

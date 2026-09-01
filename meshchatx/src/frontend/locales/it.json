@@ -4365,7 +4365,9 @@
         "signed_in_as": "Accesso eseguito come",
         "sign_out": "Esci",
         "signing_out": "Uscita in corso",
-        "sign_out_failed": "La disconnessione non ha raggiunto il server. Questo browser e stato comunque svuotato."
+        "sign_out_failed": "La disconnessione non ha raggiunto il server. Questo browser e stato comunque svuotato.",
+        "stamp_notice": "Questa istanza chiede prima al tuo browser una piccola prova di lavoro.",
+        "stamp_done": "Prova di lavoro completata in {seconds}s, {attempts} tentativi."
     },
     "post_install": {
         "windows_screen_security_title": "Attivare la sicurezza schermo di Windows?",

@@ -4365,7 +4365,9 @@
         "signed_in_as": "Aangemeld als",
         "sign_out": "Afmelden",
         "signing_out": "Bezig met afmelden",
-        "sign_out_failed": "Het afmelden bereikte de server niet. Deze browser is toch gewist."
+        "sign_out_failed": "Het afmelden bereikte de server niet. Deze browser is toch gewist.",
+        "stamp_notice": "Deze instantie vraagt je browser eerst om een klein bewijs van werk.",
+        "stamp_done": "Bewijs van werk klaar in {seconds}s, {attempts} pogingen."
     },
     "post_install": {
         "windows_screen_security_title": "Windows-schermbeveiliging inschakelen?",

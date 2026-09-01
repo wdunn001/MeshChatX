@@ -4462,7 +4462,9 @@
         "signed_in_as": "Signed in as",
         "sign_out": "Sign out",
         "signing_out": "Signing out",
-        "sign_out_failed": "Sign out did not reach the server. This browser has been cleared anyway."
+        "sign_out_failed": "Sign out did not reach the server. This browser has been cleared anyway.",
+        "stamp_notice": "This instance asks your browser for a small proof of work first.",
+        "stamp_done": "Proof of work done in {seconds}s, {attempts} attempts."
     },
     "post_install": {
         "windows_screen_security_title": "Enable Windows screen security?",

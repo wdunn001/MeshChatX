@@ -4365,7 +4365,9 @@
         "signed_in_as": "Kirjautuneena nimella",
         "sign_out": "Kirjaudu ulos",
         "signing_out": "Kirjaudutaan ulos",
-        "sign_out_failed": "Uloskirjautuminen ei tavoittanut palvelinta. Tama selain tyhjennettiin silti."
+        "sign_out_failed": "Uloskirjautuminen ei tavoittanut palvelinta. Tama selain tyhjennettiin silti.",
+        "stamp_notice": "Tama instanssi pyytaa selaimeltasi ensin pienen tyotodisteen.",
+        "stamp_done": "Tyotodiste valmis ajassa {seconds}s, {attempts} yritysta."
     },
     "post_install": {
         "windows_screen_security_title": "Otetaanko Windowsin näytön suojaus käyttöön?",

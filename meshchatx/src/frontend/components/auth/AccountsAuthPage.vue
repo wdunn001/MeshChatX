@@ -50,13 +50,30 @@
                     </p>
                 </div>
 
-                <div v-if="stampAuthEnabled && solving" class="space-y-1">
-                    <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                        <div class="h-full w-1/3 animate-pulse rounded-full bg-blue-500"></div>
+                <div v-if="stampAuthEnabled" class="space-y-1" data-testid="stamp-status">
+                    <div
+                        v-if="solving || stampSolved"
+                        class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"
+                    >
+                        <div
+                            class="h-full rounded-full"
+                            :class="solving ? 'w-1/3 animate-pulse bg-blue-500' : 'w-full bg-emerald-500'"
+                        ></div>
                     </div>
-                    <p class="text-xs text-gray-500 dark:text-gray-400" role="status">
+                    <p v-if="solving" class="text-xs text-gray-500 dark:text-gray-400" role="status">
                         {{ $t("accounts.stamp_pending") }}
                         {{ $t("accounts.stamp_progress", solveProgressParams) }}
+                    </p>
+                    <p
+                        v-else-if="stampSolved"
+                        class="text-xs text-emerald-600 dark:text-emerald-400"
+                        role="status"
+                        data-testid="stamp-done"
+                    >
+                        {{ $t("accounts.stamp_done", solveProgressParams) }}
+                    </p>
+                    <p v-else class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ $t("accounts.stamp_notice") }}
                     </p>
                 </div>
 
@@ -103,6 +120,12 @@ export default {
             // this page.
             stampAuthEnabled: false,
             solving: false,
+            // Held after a solve so the work stays on screen. A desktop
+            // browser finishes a cost 17 stamp in well under a second, which
+            // is fast enough that the progress row above appears and vanishes
+            // between frames. Somebody who was told this instance asks for
+            // proof of work should be able to see that it happened.
+            stampSolved: false,
             solveProgress: { attempts: 0, elapsedMs: 0 },
         };
     },
@@ -145,6 +168,7 @@ export default {
         toggleMode() {
             this.mode = this.mode === "register" ? "login" : "register";
             this.error = "";
+            this.stampSolved = false;
         },
         // Fetches a fresh challenge and solves it client side (in wasm),
         // reporting real progress (attempts tried, time elapsed) rather
@@ -153,11 +177,14 @@ export default {
         // this.error already set.
         async solveStamp() {
             this.solving = true;
+            this.stampSolved = false;
             this.solveProgress = { attempts: 0, elapsedMs: 0 };
             try {
-                return await solveStampChallenge("/api/v1/auth/stamp/challenge", (progress) => {
+                const proof = await solveStampChallenge("/api/v1/auth/stamp/challenge", (progress) => {
                     this.solveProgress = progress;
                 });
+                this.stampSolved = true;
+                return proof;
             } catch (e) {
                 this.error = this.$t("accounts.stamp_unavailable");
                 return null;
