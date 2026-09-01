@@ -45,6 +45,10 @@ CASES = [
     ("GET", "/api/v1/interface-stats", ROLE_USER),
     ("GET", "/api/v1/reticulum/discovered-interfaces", ROLE_USER),
     ("GET", "/api/v1/ping/abcdef/lxmf.delivery", ROLE_USER),
+    # Name resolution reads the person's own config and their own announce
+    # store, and every hosted identity is seeded with it switched on.
+    ("POST", "/api/v1/resolve", ROLE_USER),
+    ("POST", "/api/v1/resolve/pin", ROLE_USER),
     # Publishing to the shared node speaks in the instance's name.
     ("POST", "/api/v1/page-nodes/1/pages", ROLE_CONTRIBUTOR),
     ("POST", "/api/v1/bots/announce", ROLE_CONTRIBUTOR),

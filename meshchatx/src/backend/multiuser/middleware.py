@@ -36,6 +36,10 @@ _LIMITED_PATHS = (
     ("POST", "/api/v1/filesync/upload", "file_transfer"),
     ("POST", "/api/v1/filesync/start", "file_transfer"),
     ("GET", "/api/v1/ping/", "probe"),
+    # The lookup opens a blocking Link to a resolver. Pinning a petname writes
+    # locally and costs nothing, so /api/v1/resolve/pin is deliberately not
+    # matched here, which is what the path boundary below is for.
+    ("POST", "/api/v1/resolve", "resolve"),
 )
 
 
@@ -43,7 +47,18 @@ def _limited_service(method: str, path: str):
     for wanted_method, prefix, service in _LIMITED_PATHS:
         if method != wanted_method:
             continue
-        if path == prefix or path.startswith(prefix):
+        # An entry written with a trailing slash carries an identifier after
+        # it and matches anything below. An entry written without one is a
+        # whole path and matches only itself. Plain startswith did both jobs
+        # badly: "/api/v1/announce" swallowed "/api/v1/announces", so listing
+        # announces burned the announce quota, which defaults to six an hour,
+        # and "/api/v1/resolve" would swallow the free local petname pin at
+        # "/api/v1/resolve/pin".
+        if prefix.endswith("/"):
+            if path.startswith(prefix):
+                return service
+            continue
+        if path == prefix:
             return service
     return None
 
@@ -69,6 +84,11 @@ def resolve_context(app, identity_hash):
                 existing.setup()
             except Exception:
                 return None
+        # Relay chat, bots and the tool manager are built by deferred setup,
+        # and the startup path only ever runs it for current_context. Without
+        # this, everyone except that one identity is answered 503 by a manager
+        # that was never built.
+        existing.ensure_deferred_services_started()
         return existing
 
     identities_root = os.path.join(app.storage_dir, "identities")
@@ -92,6 +112,7 @@ def resolve_context(app, identity_hash):
         context = IdentityContext(identity, app)
         app.contexts[canonical] = context
         context.setup()
+        context.ensure_deferred_services_started()
     except Exception:
         app.contexts.pop(canonical, None)
         return None

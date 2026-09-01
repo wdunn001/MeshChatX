@@ -80,6 +80,13 @@ USER_PREFIXES = (
     # Reachability of one destination. It spends a little airtime, so it is
     # metered below in the same way an announce is, rather than left open.
     "/api/v1/ping",
+    # Human readable names in the NomadNet browser. Both the lookup and the
+    # petname pin read and write the person's own config and their own
+    # announce store, so this is theirs. It also has to be theirs in practice:
+    # instance_defaults.py seeds name resolution on for every identity a
+    # hosted instance creates, and an account that cannot call this would have
+    # the feature switched on and refused every time it fired.
+    "/api/v1/resolve",
 )
 
 # Read-only views of the shared machine. Granted for GET because the Network

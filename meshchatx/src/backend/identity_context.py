@@ -447,6 +447,33 @@ class IdentityContext:
 
         print(f"Identity Context for {self.identity_hash} core is now running.")
 
+    def ensure_deferred_services_started(self):
+        """Start this context's deferred services once, in the background.
+
+        The startup path only ever runs deferred setup for current_context,
+        which is the single identity a one person install has. On a shared
+        instance every signed-in person gets their own context, built by the
+        multi-user middleware, and nothing there ever finished it for them.
+        Relay chat was the visible symptom: /api/v1/rrc/hubs answers 503
+        because app.rrc_manager resolves through the caller's context and that
+        manager was never built. Bots and the tool manager were missing the
+        same way.
+
+        Safe to call on every request. It returns at once when the run has
+        already finished or another caller is inside it, and the work itself
+        happens off the request thread because connecting hubs blocks.
+        """
+        if not self.running:
+            return
+        with self._deferred_setup_lock:
+            if self._deferred_setup_done or self._deferred_setup_in_progress:
+                return
+        threading.Thread(
+            target=self.setup_deferred_services,
+            name="deferred-" + self.identity_hash[:8],
+            daemon=True,
+        ).start()
+
     def setup_deferred_services(self):
         """Finish non-critical managers after network_ready.
 
