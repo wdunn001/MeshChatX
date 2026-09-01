@@ -9,7 +9,6 @@ identity is the point: it is what gives someone an LXMF address, so they can
 reach the outside world through this instance rather than merely log into it.
 """
 
-
 from aiohttp import web
 from aiohttp_session import get_session
 
@@ -28,6 +27,7 @@ from meshchatx.src.backend.stamp_auth import require_stamp_payload
 from meshchatx.src.backend.csrf import rotate_session_csrf_token
 from meshchatx.src.backend.multiuser import rate_limit
 from meshchatx.src.backend.multiuser.middleware import resolve_context
+
 
 def _account_public(row) -> dict:
     return {
@@ -104,6 +104,11 @@ def register_multiuser_routes(routes, app):
         except AccountError as exc:
             return web.json_response({"error": str(exc)}, status=400)
         password = data.get("password")
+        if not isinstance(password, str):
+            return web.json_response(
+                {"error": "Password must be text"},
+                status=400,
+            )
 
         if store.get_by_username(username) is not None:
             return web.json_response(
@@ -165,7 +170,16 @@ def register_multiuser_routes(routes, app):
                 headers={"Retry-After": str(wait)} if wait else None,
             )
 
-        account = store.verify(data.get("username"), data.get("password"))
+        username = data.get("username")
+        password = data.get("password")
+        if not isinstance(username, str) or not isinstance(password, str):
+            # Same answer as a wrong password, so a malformed body
+            # cannot be used to tell valid usernames apart.
+            return web.json_response(
+                {"error": "Username or password is not right"},
+                status=401,
+            )
+        account = store.verify(username, password)
         if account is None:
             # One message for both wrong name and wrong password, so the reply
             # does not say which usernames exist.

@@ -88,19 +88,25 @@ def _solved_stamp_proof() -> dict:
     with patch.dict(os.environ, _STAMP_ENV, clear=False):
         challenge = create_stamp_challenge_dict()
     material = bytes.fromhex(challenge["material"])
-    stamp, _value = generate_stamp(material, challenge["cost"], challenge["expand_rounds"])
+    stamp, _value = generate_stamp(
+        material, challenge["cost"], challenge["expand_rounds"]
+    )
     assert stamp is not None
     return {**challenge, "stamp": stamp.hex()}
 
 
-async def _register(client, headers, username="alice", password="correct-horse", stamp_proof=None):
+async def _register(
+    client, headers, username="alice", password="correct-horse", stamp_proof=None
+):
     body = {"username": username, "password": password}
     if stamp_proof is not None:
         body["stamp_proof"] = stamp_proof
     return await client.post("/api/v1/multiuser/register", json=body, headers=headers)
 
 
-async def _login(client, headers, username="alice", password="correct-horse", stamp_proof=None):
+async def _login(
+    client, headers, username="alice", password="correct-horse", stamp_proof=None
+):
     body = {"username": username, "password": password}
     if stamp_proof is not None:
         body["stamp_proof"] = stamp_proof
@@ -180,10 +186,14 @@ async def test_register_replayed_stamp_is_rejected(mock_app):
             headers = await fetch_api_csrf_headers(client)
             proof = _solved_stamp_proof()
 
-            first = await _register(client, headers, username="alice", stamp_proof=proof)
+            first = await _register(
+                client, headers, username="alice", stamp_proof=proof
+            )
             assert first.status == 200
 
-            second = await _register(client, headers, username="mallory", stamp_proof=proof)
+            second = await _register(
+                client, headers, username="mallory", stamp_proof=proof
+            )
             assert second.status == 400
             body = await second.json()
             assert body.get("code") == STAMP_REPLAYED_CODE

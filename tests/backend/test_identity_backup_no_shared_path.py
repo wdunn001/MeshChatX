@@ -165,7 +165,9 @@ def test_many_concurrent_exports_across_many_identities_never_cross():
             except BaseException as exc:  # noqa: BLE001
                 errors.append(exc)
 
-        threads = [threading.Thread(target=export, args=(n, i)) for n, i in identities.items()]
+        threads = [
+            threading.Thread(target=export, args=(n, i)) for n, i in identities.items()
+        ]
         for t in threads:
             t.start()
         for t in threads:

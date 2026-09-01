@@ -101,10 +101,14 @@ def rns_resolve_defaults(storage_dir: str | None) -> dict:
     defaults = {}
     if resolvers is not None:
         defaults["rns_resolve_resolver_destination_hashes"] = resolvers
-    if resolvers is not None or os.environ.get(
-        ENV_RNS_RESOLVE_ENABLED,
-        "",
-    ).strip() or SETTINGS_RNS_RESOLVE_ENABLED in settings:
+    if (
+        resolvers is not None
+        or os.environ.get(
+            ENV_RNS_RESOLVE_ENABLED,
+            "",
+        ).strip()
+        or SETTINGS_RNS_RESOLVE_ENABLED in settings
+    ):
         defaults["rns_resolve_enabled"] = "true" if enabled else "false"
     return defaults
 

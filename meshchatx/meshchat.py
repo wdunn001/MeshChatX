@@ -2208,7 +2208,8 @@ class ReticulumMeshChat:
         # person. A reload used to drop them all and bring back only one, which
         # signed everybody else out. Remember them so they can be restored.
         self._contexts_to_restore_after_reload = [
-            h for h in dropped_identity_hashes
+            h
+            for h in dropped_identity_hashes
             if not self.current_context or h != self.current_context.identity_hash
         ]
         self.contexts.clear()

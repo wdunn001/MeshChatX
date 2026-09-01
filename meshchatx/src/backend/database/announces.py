@@ -300,8 +300,7 @@ class AnnounceDAO:
                 ),
                 updated_at = EXCLUDED.updated_at
         """,
-            (destination_hash, name_norm, name_norm, source,
-             now, now, now, now),
+            (destination_hash, name_norm, name_norm, source, now, now, now, now),
         )
         return True
 

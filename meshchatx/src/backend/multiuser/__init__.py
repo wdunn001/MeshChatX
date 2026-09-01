@@ -81,9 +81,9 @@ def set_registration_open(storage_dir: str, wanted: bool) -> None:
 
 
 # How an instance decides who may use it. Chosen once, at first run.
-MODE_OPEN = "open"            # no sign in, the historical default
-MODE_SINGLE = "single"        # one shared password, the existing app auth
-MODE_ACCOUNTS = "accounts"    # an account each, for a shared instance
+MODE_OPEN = "open"  # no sign in, the historical default
+MODE_SINGLE = "single"  # one shared password, the existing app auth
+MODE_ACCOUNTS = "accounts"  # an account each, for a shared instance
 MODES = (MODE_OPEN, MODE_SINGLE, MODE_ACCOUNTS)
 MODE_KEY = "auth_mode"
 

@@ -105,16 +105,16 @@ CONTRIBUTOR_PREFIXES = (
 )
 
 # Reading the shared node's pages is browsing. Writing to it is publishing.
-CONTRIBUTOR_WRITE_PREFIXES = (
-    "/api/v1/page-nodes",
-)
+CONTRIBUTOR_WRITE_PREFIXES = ("/api/v1/page-nodes",)
 
 _WRITE_METHODS = ("POST", "PUT", "PATCH", "DELETE")
 
 
 def _matches(path: str, prefixes) -> bool:
-    return any(path == p or path.startswith(p + "/") or path.startswith(p + "?")
-               for p in prefixes)
+    return any(
+        path == p or path.startswith(p + "/") or path.startswith(p + "?")
+        for p in prefixes
+    )
 
 
 def is_public(path: str) -> bool:

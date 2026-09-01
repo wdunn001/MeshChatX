@@ -108,8 +108,9 @@ class AccountStore:
             "last_login_at FROM accounts ORDER BY username",
         ).fetchall()
 
-    def create(self, username: str, password: str, identity_hash: str,
-               role: str = ROLE_USER):
+    def create(
+        self, username: str, password: str, identity_hash: str, role: str = ROLE_USER
+    ):
         """Add an account. Raises AccountError on anything the caller can fix.
 
         The first account is an admin whatever role is asked for, because an

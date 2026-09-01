@@ -77,7 +77,10 @@ MULTIUSER_ACCOUNTS_SCHEMA = {
                 "properties": {
                     "id": {"type": "integer"},
                     "username": {"type": "string", "minLength": 1},
-                    "role": {"type": "string", "enum": ["user", "contributor", "admin"]},
+                    "role": {
+                        "type": "string",
+                        "enum": ["user", "contributor", "admin"],
+                    },
                     "enabled": {"type": "boolean"},
                     "identity_hash": {"type": "string", "minLength": 1},
                     "last_login_at": {"anyOf": [{"type": "number"}, {"type": "null"}]},

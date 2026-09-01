@@ -41,7 +41,9 @@ _FAST_STAMP_ENV = {
 
 def _solve_challenge(challenge: dict) -> dict:
     material = bytes.fromhex(challenge["material"])
-    stamp, _value = generate_stamp(material, challenge["cost"], challenge["expand_rounds"])
+    stamp, _value = generate_stamp(
+        material, challenge["cost"], challenge["expand_rounds"]
+    )
     assert stamp is not None
     return {**challenge, "stamp": stamp.hex()}
 

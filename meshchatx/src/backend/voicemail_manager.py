@@ -83,9 +83,7 @@ class VoicemailManager:
         for bundled_name in ("espeak-ng", "espeak"):
             bundled = self._find_bundled_binary(bundled_name)
             if bundled:
-                data_dir = os.path.join(
-                    os.path.dirname(bundled), "espeak-ng-data"
-                )
+                data_dir = os.path.join(os.path.dirname(bundled), "espeak-ng-data")
                 if os.path.isdir(data_dir):
                     self.espeak_data_path = data_dir
                 return bundled

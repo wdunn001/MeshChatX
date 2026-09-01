@@ -103,7 +103,9 @@ def test_the_generated_key_is_persisted_and_reused_across_starts(storage):
 def test_the_generated_key_does_not_clobber_the_allowlist_settings(storage):
     path = os.path.join(storage, "app_security.json")
     with open(path, "w", encoding="utf-8") as handle:
-        handle.write(json.dumps({"auth_mode": "accounts", "trusted_proxy_cidrs": "10.0.0.0/8"}))
+        handle.write(
+            json.dumps({"auth_mode": "accounts", "trusted_proxy_cidrs": "10.0.0.0/8"})
+        )
     with patch.dict(os.environ, {}, clear=False):
         os.environ.pop(_ENV_ENABLED, None)
         os.environ.pop(_ENV_KEY, None)

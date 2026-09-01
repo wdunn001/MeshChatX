@@ -272,7 +272,14 @@ def verify_stamp_submission(payload: Any) -> tuple[bool, str | None]:
     expires_at = payload.get("expires_at")
     signature = payload.get("signature")
 
-    if not all(isinstance(v, str) and v for v in (material_hex, stamp_hex, signature)):
+    if (
+        not isinstance(material_hex, str)
+        or not material_hex
+        or not isinstance(stamp_hex, str)
+        or not stamp_hex
+        or not isinstance(signature, str)
+        or not signature
+    ):
         return False, STAMP_INVALID_CODE
     if (
         not isinstance(cost, int)

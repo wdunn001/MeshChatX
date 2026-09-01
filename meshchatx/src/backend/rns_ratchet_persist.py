@@ -30,7 +30,7 @@ _QUEUE_MAX = 512
 
 def _persist_one(destination_hash: bytes, ratchet: bytes) -> None:
     import RNS
-    import umsgpack
+    import umsgpack  # pyright: ignore[reportMissingImports]
 
     with RNS.Identity.ratchet_persist_lock:
         hexhash = RNS.hexrep(destination_hash, delimit=False)
