@@ -2144,7 +2144,9 @@
             "maintenance": "维护",
             "maintenance_desc": "清理、导出、导入和源",
             "plugins": "插件",
-            "plugins_desc": "安装和管理 MeshChatX 插件"
+            "plugins_desc": "安装和管理 MeshChatX 插件",
+            "network_desc_personal": "网络可视化、页面抓取和通话",
+            "privacy_desc_personal": "你自己的数据"
         },
         "nav_label": "设置分组",
         "search_label": "搜索设置",

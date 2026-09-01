@@ -2,7 +2,16 @@
 
 import { camelCaseToSearchWords } from "../settingsSearchUtils.js";
 
-/** @typedef {{ id: string, labelKey: string, descriptionKey: string, sections: string[] }} SettingsTab */
+/**
+ * @typedef {Object} SettingsTab
+ * @property {string} id
+ * @property {string} labelKey
+ * @property {string} descriptionKey
+ * @property {string} [personalDescriptionKey] subtitle for an account that
+ *   cannot see this tab's instance-owned sections. Without it the Network tab
+ *   still advertises transport and interfaces to somebody who has neither.
+ * @property {string[]} sections
+ */
 
 /** @type {SettingsTab[]} */
 export const SETTINGS_TABS = [
@@ -22,6 +31,7 @@ export const SETTINGS_TABS = [
         id: "network",
         labelKey: "settings.tabs.network",
         descriptionKey: "settings.tabs.network_desc",
+        personalDescriptionKey: "settings.tabs.network_desc_personal",
         sections: ["transport", "interfaces", "visualiser", "crawler", "networkSecurity", "telephony"],
     },
     {
@@ -34,6 +44,7 @@ export const SETTINGS_TABS = [
         id: "privacy",
         labelKey: "settings.tabs.privacy",
         descriptionKey: "settings.tabs.privacy_desc",
+        personalDescriptionKey: "settings.tabs.privacy_desc_personal",
         sections: ["privacyData", "blocked", "banishment", "auth", "webExposure", "csp"],
     },
     {

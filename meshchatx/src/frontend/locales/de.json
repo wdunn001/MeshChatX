@@ -3838,7 +3838,9 @@
             "maintenance": "Wartung",
             "maintenance_desc": "Bereinigung, Export, Import und Quellen",
             "plugins": "Plugins",
-            "plugins_desc": "MeshChatX-Plugins installieren und verwalten"
+            "plugins_desc": "MeshChatX-Plugins installieren und verwalten",
+            "network_desc_personal": "Netzwerkvisualisierung, Seiten-Crawler und Anrufe",
+            "privacy_desc_personal": "Deine eigenen Daten"
         },
         "nav_label": "Einstellungsbereiche",
         "search_label": "Einstellungen suchen",

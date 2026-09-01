@@ -2069,7 +2069,9 @@
             "maintenance": "Ylläpito",
             "maintenance_desc": "Siivous, vienti, tuonti ja lähteet",
             "plugins": "Laajennukset",
-            "plugins_desc": "Asenna ja hallitse MeshChatX-laajennuksia"
+            "plugins_desc": "Asenna ja hallitse MeshChatX-laajennuksia",
+            "network_desc_personal": "Verkkovisualisointi, sivujen indeksointi ja puhelut",
+            "privacy_desc_personal": "Omat tietosi"
         },
         "nav_label": "Asetusosiot",
         "search_label": "Hae asetuksista",

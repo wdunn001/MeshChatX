@@ -2144,7 +2144,9 @@
             "maintenance": "Maintenance",
             "maintenance_desc": "Nettoyage, exportation, importation et sources",
             "plugins": "Extensions",
-            "plugins_desc": "Installer et gérer les extensions MeshChatX"
+            "plugins_desc": "Installer et gérer les extensions MeshChatX",
+            "network_desc_personal": "Visualiseur reseau, exploration de pages et appels",
+            "privacy_desc_personal": "Vos propres donnees"
         },
         "nav_label": "Sections des paramètres",
         "search_label": "Rechercher dans les paramètres",

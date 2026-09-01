@@ -2144,7 +2144,9 @@
             "maintenance": "Onderhoud",
             "maintenance_desc": "Opschonen, exporteren, importeren en bronnen",
             "plugins": "Plug-ins",
-            "plugins_desc": "MeshChatX-plugins installeren en beheren"
+            "plugins_desc": "MeshChatX-plugins installeren en beheren",
+            "network_desc_personal": "Netwerkvisualisatie, paginacrawler en oproepen",
+            "privacy_desc_personal": "Je eigen gegevens"
         },
         "nav_label": "Instellingssecties",
         "search_label": "Zoek in instellingen",

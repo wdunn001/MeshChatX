@@ -2144,7 +2144,9 @@
             "maintenance": "Mantenimiento",
             "maintenance_desc": "Limpieza, exportación, importación y fuentes",
             "plugins": "Complementos",
-            "plugins_desc": "Instalar y gestionar complementos de MeshChatX"
+            "plugins_desc": "Instalar y gestionar complementos de MeshChatX",
+            "network_desc_personal": "Visualizador de red, rastreador de paginas y llamadas",
+            "privacy_desc_personal": "Tus propios datos"
         },
         "nav_label": "Secciones de ajustes",
         "search_label": "Buscar ajustes",

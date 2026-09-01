@@ -3838,7 +3838,9 @@
             "maintenance": "Обслуживание",
             "maintenance_desc": "Очистка, экспорт, импорт и источники",
             "plugins": "Плагины",
-            "plugins_desc": "Установка и управление плагинами MeshChatX"
+            "plugins_desc": "Установка и управление плагинами MeshChatX",
+            "network_desc_personal": "Визуализация сети, обход страниц и звонки",
+            "privacy_desc_personal": "Ваши собственные данные"
         },
         "nav_label": "Разделы настроек",
         "search_label": "Поиск настроек",
