@@ -73,9 +73,12 @@ async def test_csp_header_logic(mock_rns_minimal, tmp_path):
         assert "wss://[::1]" not in csp
         assert (
             response.headers.get("Permissions-Policy")
-            == "microphone=(self), camera=(self), autoplay=(self), speaker-selection=(self), "
+            == "microphone=(self), camera=(self), autoplay=(self), "
             "bluetooth=(self), serial=(self), usb=(self)"
         )
+        # Named features only. speaker-selection defaults to self anyway, and
+        # naming it made browsers without it warn on every page load.
+        assert "speaker-selection" not in response.headers.get("Permissions-Policy", "")
         assert "Feature-Policy" not in response.headers
         m = re.search(r"script-src([^;]+);", csp)
         assert m is not None and "blob:" in m.group(1)

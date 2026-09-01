@@ -286,14 +286,22 @@ def create_security_middleware(app):
 
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        # Explicitly allow mic/camera, autoplay, speaker routing, and hardware
-        # transports for this origin. Listing only mic/camera without bluetooth
-        # /serial/usb has caused some Chromium and Brave builds to treat
+        # Explicitly allow mic, camera, autoplay and the hardware transports
+        # for this origin. Listing only mic and camera without bluetooth,
+        # serial and usb has caused some Chromium and Brave builds to treat
         # hardware APIs as unavailable. Do not also send the legacy feature
         # policy header. Chromium ignores unrecognized tokens there and warns
         # when the same features appear on both headers.
+        #
+        # speaker-selection is deliberately absent. Its default allowlist is
+        # already self, so naming it changed nothing where it is implemented,
+        # and browsers that do not implement it log "Unrecognized feature" on
+        # every page load. On a terminal people are handed during an incident,
+        # a console with one permanent warning in it is a console nobody reads.
+        # The hardware transports above are the ones that actually needed
+        # naming.
         response.headers["Permissions-Policy"] = (
-            "microphone=(self), camera=(self), autoplay=(self), speaker-selection=(self), "
+            "microphone=(self), camera=(self), autoplay=(self), "
             "bluetooth=(self), serial=(self), usb=(self)"
         )
 
