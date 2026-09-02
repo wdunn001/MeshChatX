@@ -65,9 +65,26 @@ const router = createRouter({
     history: createWebHashHistory(),
     routes: [
         {
+            name: "accounts",
+            path: "/accounts",
+            component: () => import("./components/auth/AccountsAuthPage.vue"),
+            // standalone: App.vue renders this route on its own, with none of
+            // the signed-in shell around it. A visitor with no session has
+            // nothing to do with a nav rail, Compose, or a peer identity
+            // widget, so the shell never mounts behind this page.
+            meta: { isPage: true, standalone: true },
+        },
+        {
+            name: "setup-mode",
+            path: "/setup-mode",
+            component: () => import("./components/auth/SetupModePage.vue"),
+            meta: { isPage: true, standalone: true },
+        },
+        {
             name: "auth",
             path: "/auth",
             component: () => import("./components/auth/AuthPage.vue"),
+            meta: { standalone: true },
         },
         {
             path: "/",
@@ -259,6 +276,11 @@ const router = createRouter({
             component: () => import("./components/settings/SettingsPage.vue"),
         },
         {
+            name: "accounts-admin",
+            path: "/accounts-admin",
+            component: () => import("./components/accounts/AccountsAdminPage.vue"),
+        },
+        {
             name: "identities",
             path: "/identities",
             component: () => import("./components/settings/IdentitiesPage.vue"),
@@ -342,15 +364,26 @@ const router = createRouter({
 
 window.api = createApiClient({
     onAuthError() {
-        if (router.currentRoute.value.name !== "auth") {
+        // An instance using accounts signs in on its own page. Sending someone
+        // to the single password page instead put them in a loop: that page
+        // redirects back here, and the next failed call sent them round again.
+        const signInPage = GlobalState.authMode === "accounts" ? "accounts" : "auth";
+        if (router.currentRoute.value.name !== signInPage) {
             GlobalState.authenticated = false;
-            router.push("/auth");
+            router.push("/" + signInPage);
         }
     },
 });
 
 import { waitForMeshReady, waitForNetworkReady } from "./js/networkStartupWait.js";
-import { resolveAuthNavigation } from "./js/authSessionSync.js";
+import {
+    applyAuthStatusToGlobalState,
+    fetchAuthStatus,
+    fetchMultiuserStatus,
+    resolveAuthNavigation,
+} from "./js/authSessionSync.js";
+import { isHostedInstance, isInstanceAdmin } from "./js/accountRole.js";
+import { loadUiProfile, saveUiProfile } from "./js/uiProfile.js";
 
 function setBootSplashLine(text) {
     const splash = typeof document !== "undefined" ? document.getElementById("meshchatx-boot-splash") : null;
@@ -403,6 +436,18 @@ if (networkReady) {
     } catch {
         // CSRF token will be retried on the next mutating request if needed.
     }
+
+    // Started here, not awaited here. mount() below must not wait on this, or
+    // boot timing changes for every build including desktop. loadPluginsIfEnabled
+    // is the one caller that needs the real answer rather than the GlobalState
+    // defaults, because it runs synchronously out of bootstrap() before the
+    // router guard below has had a chance to resolve the same question.
+    const initialAuthStatusPromise = fetchAuthStatus(window.api)
+        .then((status) => {
+            applyAuthStatusToGlobalState(status);
+            return status;
+        })
+        .catch(() => null);
 
     router.beforeEach(async (to, _from, next) => {
         const decision = await resolveAuthNavigation(to, window.api);
@@ -480,8 +525,49 @@ if (networkReady) {
         void import("./components/interfaces/InterfacesPage.vue");
     }
 
+    /**
+     * Put this person's stored preferences into the browser before anything
+     * reads them.
+     *
+     * It has to happen before mount. Components read localStorage as they set
+     * up, so restoring afterwards means the first paint uses defaults and then
+     * changes under the person. Only a hosted instance needs this: everywhere
+     * else the browser belongs to the one person using it, and their values
+     * were never cleared.
+     */
+    async function restoreUiProfileIfHosted() {
+        const status = await initialAuthStatusPromise;
+        if (!status || status.auth_mode !== "accounts" || !status.authenticated) {
+            return;
+        }
+        await loadUiProfile(window.api);
+    }
+
+    /**
+     * Keep the stored profile current without waiting for a clean sign out.
+     *
+     * A person on a borrowed machine closes the tab far more often than they
+     * press sign out, and visibilitychange is the last event a browser
+     * reliably gives before that.
+     */
+    function startUiProfileSaveOnHide() {
+        if (typeof document === "undefined") {
+            return;
+        }
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState !== "hidden") {
+                return;
+            }
+            if (!isHostedInstance(GlobalState) || !GlobalState.authenticated) {
+                return;
+            }
+            void saveUiProfile(window.api);
+        });
+    }
+
     function bootstrap() {
         registerMeshchatServiceWorker();
+        void restoreUiProfileIfHosted().finally(startUiProfileSaveOnHide);
         const splash = typeof document !== "undefined" ? document.getElementById("meshchatx-boot-splash") : null;
         try {
             createApp(App).use(router).use(vuetify).use(i18n).use(vClickOutside).mount("#app");
@@ -547,8 +633,29 @@ if (networkReady) {
     }
 
     async function loadPluginsIfEnabled() {
+        await initialAuthStatusPromise;
+        // A shared instance's plugin list is admin state, not something a
+        // visitor who has not signed in yet has any use for. GlobalState.authEnabled
+        // is the single password flag and stays false on an accounts instance,
+        // so it cannot be the thing that gates this below.
+        if (GlobalState.authMode === "accounts" && !GlobalState.authenticated) {
+            return;
+        }
         if (!(GlobalState.authenticated || !GlobalState.authEnabled)) {
             return;
+        }
+        // The plugin list is admin state on a shared instance, so an ordinary
+        // account is refused it. Read the role first when it is not known yet:
+        // this runs at boot and can beat the router guard that normally loads
+        // it, and guessing here would either skip plugins for the operator or
+        // spend a 403 on everybody else.
+        if (isHostedInstance(GlobalState)) {
+            if (!GlobalState.accountRole) {
+                await fetchMultiuserStatus(window.api);
+            }
+            if (!isInstanceAdmin(GlobalState)) {
+                return;
+            }
         }
         try {
             const response = await window.api.get("/api/v1/plugins");

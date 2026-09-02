@@ -2144,7 +2144,9 @@
             "maintenance": "Onderhoud",
             "maintenance_desc": "Opschonen, exporteren, importeren en bronnen",
             "plugins": "Plug-ins",
-            "plugins_desc": "MeshChatX-plugins installeren en beheren"
+            "plugins_desc": "MeshChatX-plugins installeren en beheren",
+            "network_desc_personal": "Netwerkvisualisatie, paginacrawler en oproepen",
+            "privacy_desc_personal": "Je eigen gegevens"
         },
         "nav_label": "Instellingssecties",
         "search_label": "Zoek in instellingen",
@@ -2464,7 +2466,12 @@
         "tab_content_mismatch": "Dit tabblad was niet gesynchroniseerd en wordt opnieuw geladen",
         "tab_restore_failed": "Kon de pagina van dit tabblad niet herstellen",
         "open_node_failed": "Kon het NomadNet-knooppunt niet openen",
-        "hide_source": "Bron verbergen"
+        "hide_source": "Bron verbergen",
+        "name_not_found": "Geen enkele resolver kent deze naam: ",
+        "name_ambiguous": "Meer dan een identiteit heeft deze naam geregistreerd, dus is hij niet gebruikt. Blader in plaats daarvan op bestemmingshash: ",
+        "name_resolver_unreachable": "Er kon geen resolver worden bereikt om op te zoeken: ",
+        "name_resolution_off": "Naamresolutie staat uit. Voeg onder Instellingen, NomadNet, een resolver toe om op naam te bladeren: ",
+        "load_phase_resolving_name": "De naam wordt bij een resolver opgezocht"
     },
     "forwarder": {
         "title": "LXMF-doorstuurder",
@@ -4344,9 +4351,25 @@
         "set_password": "Wachtwoord instellen",
         "login": "Inloggen",
         "passwords_mismatch": "Wachtwoorden komen niet overeen",
-        "altcha_required": "Voltooi eerst de verificatie-uitdaging",
+        "stamp_required": "Voltooi eerst de verificatie-uitdaging",
+        "stamp_solving": "Solving proof of work...",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
         "status_check_failed": "Authenticatiestatus kon niet worden gecontroleerd",
         "failed": "Authenticatie mislukt"
+    },
+    "accounts": {
+        "stamp_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
+        "signed_in_as": "Aangemeld als",
+        "sign_out": "Afmelden",
+        "signing_out": "Bezig met afmelden",
+        "sign_out_failed": "Het afmelden bereikte de server niet. Deze browser is toch gewist.",
+        "stamp_notice": "Deze instantie vraagt je browser eerst om een klein bewijs van werk.",
+        "stamp_done": "Bewijs van werk klaar in {seconds}s, {attempts} pogingen."
     },
     "post_install": {
         "windows_screen_security_title": "Windows-schermbeveiliging inschakelen?",
@@ -4450,5 +4473,45 @@
         "delete": "Verwijderen",
         "delete_confirm": "\"{name}\" uit de syncmap verwijderen?",
         "delete_done": "Verwijderd"
+    },
+    "hosted_welcome": {
+        "address_body": "Iedereen met dit adres kan je bereiken. Het is van jou.",
+        "address_label": "Jouw adres",
+        "close": "Sluiten",
+        "copy_address": "Adres kopieren",
+        "find_body": "Om iemand te bereiken heb je hun adres nodig. Deel het jouwe, of kijk wie hier nog meer is.",
+        "name_body": "Dat is de naam die anderen zien wanneer jouw adres op het netwerk verschijnt.",
+        "name_label": "Je verschijnt als",
+        "open_announces": "Kijk wie hier nog meer is",
+        "show_qr": "QR-code tonen",
+        "title": "Je zit op het mesh"
+    },
+    "accounts_admin": {
+        "description": "Iedereen die zich bij deze instantie kan aanmelden.",
+        "disabled": "Uitgeschakeld",
+        "empty": "Nog geen accounts.",
+        "enabled": "Actief",
+        "identity": "Identiteit",
+        "last_login": "Laatst aangemeld",
+        "load_failed": "De accountlijst kon niet worden geladen",
+        "never": "Nooit",
+        "registration_closed_help": "Niemand nieuw kan vanaf de aanmeldpagina een account aanmaken.",
+        "registration_open_help": "Iedereen die deze instantie bereikt mag een account aanmaken.",
+        "registration_title": "Aanmeldingen",
+        "registration_toggle": "Iedereen toestaan een account aan te maken",
+        "remove": "Verwijderen",
+        "remove_confirm": "{username} verwijderen? De identiteit en de berichten blijven op deze machine staan.",
+        "removed": "Account verwijderd",
+        "role": "Rol",
+        "role_admin": "Beheerder",
+        "role_contributor": "Bijdrager",
+        "role_help": "Een gebruiker bereikt de eigen berichten en het mesh. Een bijdrager publiceert daarnaast op de gedeelde node en draait bots. Een beheerder beheert de instantie.",
+        "role_user": "Gebruiker",
+        "status": "Status",
+        "title": "Accounts",
+        "update_failed": "Die wijziging is geweigerd",
+        "updated": "Account bijgewerkt",
+        "username": "Gebruikersnaam",
+        "you": "Jij"
     }
 }

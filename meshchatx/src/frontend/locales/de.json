@@ -2240,7 +2240,12 @@
         "tab_content_mismatch": "Dieser Tab war nicht synchron und wird neu geladen",
         "tab_restore_failed": "Seite dieses Tabs konnte nicht wiederhergestellt werden",
         "open_node_failed": "NomadNet-Knoten konnte nicht geöffnet werden",
-        "hide_source": "Quelltext ausblenden"
+        "hide_source": "Quelltext ausblenden",
+        "name_not_found": "Kein Resolver kennt diesen Namen: ",
+        "name_ambiguous": "Mehr als eine Identitaet hat diesen Namen registriert, daher wurde er nicht verwendet. Nutze stattdessen den Ziel-Hash: ",
+        "name_resolver_unreachable": "Es war kein Resolver erreichbar fuer die Abfrage von: ",
+        "name_resolution_off": "Die Namensaufloesung ist aus. Trage unter Einstellungen, NomadNet, einen Resolver ein, um nach Namen zu browsen: ",
+        "load_phase_resolving_name": "Der Name wird bei einem Resolver nachgeschlagen"
     },
     "forwarder": {
         "title": "LXMF-Weiterleiter",
@@ -3833,7 +3838,9 @@
             "maintenance": "Wartung",
             "maintenance_desc": "Bereinigung, Export, Import und Quellen",
             "plugins": "Plugins",
-            "plugins_desc": "MeshChatX-Plugins installieren und verwalten"
+            "plugins_desc": "MeshChatX-Plugins installieren und verwalten",
+            "network_desc_personal": "Netzwerkvisualisierung, Seiten-Crawler und Anrufe",
+            "privacy_desc_personal": "Deine eigenen Daten"
         },
         "nav_label": "Einstellungsbereiche",
         "search_label": "Einstellungen suchen",
@@ -4344,9 +4351,25 @@
         "set_password": "Passwort festlegen",
         "login": "Anmelden",
         "passwords_mismatch": "Passwörter stimmen nicht überein",
-        "altcha_required": "Schließen Sie zuerst die Verifizierungsaufgabe ab",
+        "stamp_required": "Schließen Sie zuerst die Verifizierungsaufgabe ab",
+        "stamp_solving": "Solving proof of work...",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
         "status_check_failed": "Authentifizierungsstatus konnte nicht geprüft werden",
         "failed": "Authentifizierung fehlgeschlagen"
+    },
+    "accounts": {
+        "stamp_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
+        "signed_in_as": "Angemeldet als",
+        "sign_out": "Abmelden",
+        "signing_out": "Wird abgemeldet",
+        "sign_out_failed": "Die Abmeldung hat den Server nicht erreicht. Dieser Browser wurde trotzdem geleert.",
+        "stamp_notice": "Diese Instanz verlangt zuerst einen kleinen Arbeitsnachweis von deinem Browser.",
+        "stamp_done": "Arbeitsnachweis erbracht in {seconds}s, {attempts} Versuche."
     },
     "post_install": {
         "windows_screen_security_title": "Windows-Bildschirmsicherheit aktivieren?",
@@ -4450,5 +4473,45 @@
         "delete": "Löschen",
         "delete_confirm": "„{name}“ aus dem Sync-Ordner löschen?",
         "delete_done": "Gelöscht"
+    },
+    "hosted_welcome": {
+        "address_body": "Wer diese Adresse hat, kann dich erreichen. Sie gehoert dir.",
+        "address_label": "Deine Adresse",
+        "close": "Schliessen",
+        "copy_address": "Adresse kopieren",
+        "find_body": "Um jemanden zu erreichen, brauchst du dessen Adresse. Teile deine, oder sieh nach, wer sonst hier ist.",
+        "name_body": "Diesen Namen sehen andere, wenn deine Adresse im Netz auftaucht.",
+        "name_label": "Du erscheinst als",
+        "open_announces": "Sehen, wer sonst hier ist",
+        "show_qr": "QR-Code zeigen",
+        "title": "Du bist im Mesh"
+    },
+    "accounts_admin": {
+        "description": "Alle, die sich bei dieser Instanz anmelden koennen.",
+        "disabled": "Deaktiviert",
+        "empty": "Noch keine Konten.",
+        "enabled": "Aktiv",
+        "identity": "Identitaet",
+        "last_login": "Zuletzt angemeldet",
+        "load_failed": "Die Kontenliste konnte nicht geladen werden",
+        "never": "Nie",
+        "registration_closed_help": "Ueber die Anmeldeseite kann niemand Neues ein Konto anlegen.",
+        "registration_open_help": "Wer diese Instanz erreicht, darf ein Konto anlegen.",
+        "registration_title": "Registrierungen",
+        "registration_toggle": "Allen erlauben, ein Konto anzulegen",
+        "remove": "Entfernen",
+        "remove_confirm": "{username} entfernen? Die Identitaet und die Nachrichten bleiben auf diesem Rechner.",
+        "removed": "Konto entfernt",
+        "role": "Rolle",
+        "role_admin": "Administrator",
+        "role_contributor": "Beitragende",
+        "role_help": "Ein Benutzer erreicht die eigenen Nachrichten und das Mesh. Beitragende veroeffentlichen zusaetzlich auf dem gemeinsamen Knoten und betreiben Bots. Ein Administrator betreibt die Instanz.",
+        "role_user": "Benutzer",
+        "status": "Status",
+        "title": "Konten",
+        "update_failed": "Diese Aenderung wurde abgelehnt",
+        "updated": "Konto aktualisiert",
+        "username": "Benutzername",
+        "you": "Du"
     }
 }

@@ -81,6 +81,29 @@ export function isCsrfRejection(status, errData) {
 }
 
 /**
+ * True when a 403 means the account's role is too low, not that nobody is
+ * signed in.
+ *
+ * On a shared instance meshchatx/src/backend/multiuser/middleware.py refuses a
+ * call the account's role may not make and names the role it wanted in
+ * required_role. That is not a session problem, and treating it as one signs
+ * a perfectly valid session out: one page fetching one endpoint above its
+ * role would throw the person back to the sign in screen.
+ *
+ * @param {number} status
+ * @param {unknown} errData
+ * @returns {boolean}
+ */
+export function isRoleRejection(status, errData) {
+    if (status !== 403) {
+        return false;
+    }
+    return Boolean(
+        errData && typeof errData === "object" && typeof errData.required_role === "string" && errData.required_role
+    );
+}
+
+/**
  * @param {{ onAuthError?: (err: Error & { response?: { status: number, data: unknown } }) => void }} options
  */
 export function createApiClient(options = {}) {
@@ -144,7 +167,7 @@ export function createApiClient(options = {}) {
             }
 
             if (onAuthError && (response.status === 401 || response.status === 403)) {
-                if (!isCsrfRejection(response.status, errData)) {
+                if (!isCsrfRejection(response.status, errData) && !isRoleRejection(response.status, errData)) {
                     onAuthError(err);
                 }
             }

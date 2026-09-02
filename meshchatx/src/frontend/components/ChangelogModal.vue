@@ -160,7 +160,16 @@ export default {
             return this.version || this.appVersion;
         },
         isPage() {
-            return this.$route?.meta?.isPage === true;
+            // Checked against this component's own route rather than a
+            // shared route.meta flag: App.vue also keeps one ChangelogModal
+            // mounted at all times as an overlay, reachable by ref from any
+            // route, and that instance must stay a dialog. A shared
+            // route.meta.isPage flag would make it think it were the routed
+            // page too whenever the CURRENT route happened to carry that
+            // flag for an unrelated reason, such as the accounts sign-in
+            // page, unwrapping the dialog and rendering the panel to
+            // whoever is standing on that route.
+            return this.$route?.name === "changelog";
         },
         dialogFullscreen() {
             return this.windowWidth < 768;

@@ -4,8 +4,25 @@ import { reactive } from "vue";
 const globalState = reactive({
     authSessionResolved: true,
     authEnabled: false,
+    // How this instance decides who may use it: null (not yet resolved, or a
+    // single desktop build that never asks), "open", "single", or "accounts".
+    // Set from /api/v1/auth/status once boot resolves it.
+    authMode: null,
+    // True once the real /api/v1/auth/status answer has been read at least
+    // once. Starts false, unlike authSessionResolved above, specifically so
+    // App.vue's shell-start watcher has a field that reliably flips from
+    // false to true and therefore always fires, rather than one that may
+    // already equal its post-resolve value and never trigger a change.
+    authModeResolved: false,
     isLoopbackBind: true,
     authenticated: false,
+    // The signed-in account, on an instance running in accounts mode. Null on
+    // every other build, where one person operates their own node and there
+    // are no roles to hold. Read from /api/v1/multiuser/status.
+    accountRole: null,
+    accountUsername: null,
+    accountIdentityHash: null,
+    accountRegistrationOpen: true,
     pluginsEnabled: true,
     detailedOutboundSendStatus: false,
     outboundTransferProgressEnabled: true,

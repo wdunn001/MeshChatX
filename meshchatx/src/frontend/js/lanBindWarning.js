@@ -27,9 +27,20 @@ export function shouldShowLanBindNoAuthBanner({
     isElectron = false,
     isAndroid = false,
     authEnabled = false,
+    // How the instance decides who may use it. On a shared instance this is
+    // "accounts", and every API path is already closed to anyone without a
+    // session, so the banner would be telling a signed-in person something
+    // untrue about the instance they just signed in to. The single password
+    // flag above stays false in that mode, so it cannot answer this on its
+    // own.
+    authMode = null,
     isLoopbackBind = true,
     routeName = "",
     dismissed = false,
+    // A route that renders on its own (the auth page, and on a shared
+    // instance the accounts sign-in page) carries no shell chrome, so this
+    // banner about the shell's own bind settings has nothing to attach to.
+    isStandaloneRoute = false,
 } = {}) {
     if (dismissed || isLanBindNoAuthBannerDismissed()) {
         return false;
@@ -37,10 +48,10 @@ export function shouldShowLanBindNoAuthBanner({
     if (isElectron || isAndroid) {
         return false;
     }
-    if (routeName === "auth") {
+    if (routeName === "auth" || isStandaloneRoute) {
         return false;
     }
-    if (authEnabled) {
+    if (authEnabled || authMode === "accounts") {
         return false;
     }
     return isLoopbackBind === false;

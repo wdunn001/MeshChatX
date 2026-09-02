@@ -137,9 +137,10 @@ def register_identities_routes(routes, app):
     @routes.post("/api/v1/identity/backup/download")
     async def identity_backup_download(request):
         try:
-            info = app.backup_identity()
-            with open(info["path"], "rb") as f:
-                data = f.read()
+            # In memory only, and never written to disk: see
+            # IdentityManager.backup_identity for why a shared on-disk
+            # path here was a private key leak on a multi-user instance.
+            data = app.backup_identity()
             return web.Response(
                 body=data,
                 headers={

@@ -4,6 +4,7 @@ import { createRouter, createWebHashHistory } from "vue-router";
 import { createI18n } from "vue-i18n";
 import { createVuetify } from "vuetify";
 import App from "../../meshchatx/src/frontend/components/App.vue";
+import GlobalState from "../../meshchatx/src/frontend/js/GlobalState.js";
 import { appPackageVersion } from "./fixtures/repoPackageVersion.js";
 import en from "../../meshchatx/src/frontend/locales/en.json";
 import ToastUtils from "../../meshchatx/src/frontend/js/ToastUtils";
@@ -147,6 +148,17 @@ describe("App.vue sidebar identity label and announce control", () => {
         axiosMock.get.mockImplementation(defaultAxiosImplementation);
         window.localStorage?.removeItem("meshchatx.sidebar.app");
         window.localStorage?.removeItem("meshchatx.sidebar.nav_layout");
+        // This test mounts App.vue against its own bare router with no
+        // main.js-style beforeEach guard, so nothing here ever calls
+        // applyAuthStatusToGlobalState the way production does a moment
+        // after boot. Seed the same end state that guard would have left
+        // behind for a no-auth, non-accounts instance (matching the
+        // /api/v1/auth/status mock above), so the shell-start watcher's
+        // authModeResolved gate does not block it forever in this test.
+        GlobalState.authModeResolved = true;
+        GlobalState.authMode = null;
+        GlobalState.authEnabled = false;
+        GlobalState.authenticated = false;
     });
 
     afterEach(() => {
@@ -156,6 +168,7 @@ describe("App.vue sidebar identity label and announce control", () => {
             wrapper = undefined;
         }
         delete window.api;
+        GlobalState.authModeResolved = false;
     });
 
     async function readyShell(r) {

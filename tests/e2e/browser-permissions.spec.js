@@ -213,9 +213,11 @@ test.describe("RNode flasher Web Bluetooth chooser path", () => {
         expect(policy).toContain("bluetooth=(self)");
         expect(policy).toContain("microphone=(self)");
         expect(policy).toContain("autoplay=(self)");
-        expect(policy).toContain("speaker-selection=(self)");
         expect(policy).toContain("serial=(self)");
         expect(policy).toContain("usb=(self)");
         expect(index.headers()["feature-policy"] || "").toBe("");
+        // speaker-selection is not named on purpose. Its default allowlist is
+        // already self, and browsers without it warn on every page load.
+        expect(policy).not.toContain("speaker-selection");
     });
 });

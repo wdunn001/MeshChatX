@@ -81,7 +81,7 @@ from meshchatx.src.backend.csrf import (
     rotate_session_csrf_token,
     validate_csrf_header,
 )
-from meshchatx.src.backend.altcha_auth import altcha_enabled_from_env
+from meshchatx.src.backend.stamp_auth import configure_stamp_auth
 from meshchatx.src.backend.auth_page_hint import auth_page_hint_from_env
 from meshchatx.src.backend.demo_mode import (
     auth_bypass_from_env,
@@ -99,6 +99,8 @@ from meshchatx.src.backend.database.access_attempts import (
     user_agent_hash,
 )
 from meshchatx.src.backend.identity_context import IdentityContext
+from meshchatx.src.backend.request_context import get_active_context
+from meshchatx.src.backend.multiuser import is_enabled as multiuser_is_enabled
 from meshchatx.src.backend.identity_manager import IdentityManager
 from meshchatx.src.backend.interface_config_parser import InterfaceConfigParser
 from meshchatx.src.backend.interface_editor import InterfaceEditor
@@ -578,12 +580,12 @@ class ReticulumMeshChat:
         defer_network_setup: bool = False,
         headless: bool = False,
         demo_mode: bool = False,
-        altcha_enabled: bool = False,
+        stamp_auth_enabled: bool = False,
     ):
         self.running = True
         self.plugins_enabled = plugins_enabled
         self.demo_mode = bool(demo_mode)
-        self.altcha_enabled = bool(altcha_enabled)
+        self.stamp_auth_enabled = bool(stamp_auth_enabled)
         self.auth_page_hint = auth_page_hint_from_env()
         self._memory_diag_enabled = memory_diag_enabled
         self._mem_diag = None
@@ -753,22 +755,37 @@ class ReticulumMeshChat:
 
     # Proxy properties for backward compatibility
     @property
+    def active_context(self):
+        """The identity this work belongs to.
+
+        Inside an HTTP request that is the signed-in user's context, set by
+        middleware from the session. Everywhere else it is the single active
+        context, which is how MeshChatX behaved before multiple people could
+        be signed in at once.
+        """
+        return get_active_context() or self.current_context
+
+    @property
     def identity(self):
-        return self.current_context.identity if self.current_context else None
+        ctx = self.active_context
+        return ctx.identity if ctx else None
 
     @identity.setter
     def identity(self, value):
-        if self.current_context:
-            self.current_context.identity = value
+        ctx = self.active_context
+        if ctx:
+            ctx.identity = value
 
     @property
     def database(self):
-        return self.current_context.database if self.current_context else None
+        ctx = self.active_context
+        return ctx.database if ctx else None
 
     @database.setter
     def database(self, value):
-        if self.current_context:
-            self.current_context.database = value
+        ctx = self.active_context
+        if ctx:
+            ctx.database = value
 
     @property
     def db(self):
@@ -780,295 +797,333 @@ class ReticulumMeshChat:
 
     @property
     def config(self):
-        return self.current_context.config if self.current_context else None
+        ctx = self.active_context
+        return ctx.config if ctx else None
 
     @config.setter
     def config(self, value):
-        if self.current_context:
-            self.current_context.config = value
+        ctx = self.active_context
+        if ctx:
+            ctx.config = value
 
     @property
     def message_handler(self):
-        return self.current_context.message_handler if self.current_context else None
+        ctx = self.active_context
+        return ctx.message_handler if ctx else None
 
     @message_handler.setter
     def message_handler(self, value):
-        if self.current_context:
-            self.current_context.message_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.message_handler = value
 
     @property
     def announce_manager(self):
-        return self.current_context.announce_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.announce_manager if ctx else None
 
     @announce_manager.setter
     def announce_manager(self, value):
-        if self.current_context:
-            self.current_context.announce_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.announce_manager = value
 
     @property
     def archiver_manager(self):
-        return self.current_context.archiver_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.archiver_manager if ctx else None
 
     @archiver_manager.setter
     def archiver_manager(self, value):
-        if self.current_context:
-            self.current_context.archiver_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.archiver_manager = value
 
     @property
     def map_manager(self):
-        return self.current_context.map_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.map_manager if ctx else None
 
     @map_manager.setter
     def map_manager(self, value):
-        if self.current_context:
-            self.current_context.map_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.map_manager = value
 
     @property
     def map_overlay_manager(self):
-        return (
-            self.current_context.map_overlay_manager if self.current_context else None
-        )
+        ctx = self.active_context
+        return ctx.map_overlay_manager if ctx else None
 
     @map_overlay_manager.setter
     def map_overlay_manager(self, value):
-        if self.current_context:
-            self.current_context.map_overlay_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.map_overlay_manager = value
 
     @property
     def map_data_manager(self):
-        return self.current_context.map_data_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.map_data_manager if ctx else None
 
     @map_data_manager.setter
     def map_data_manager(self, value):
-        if self.current_context:
-            self.current_context.map_data_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.map_data_manager = value
 
     @property
     def docs_manager(self):
-        return self.current_context.docs_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.docs_manager if ctx else None
 
     @docs_manager.setter
     def docs_manager(self, value):
-        if self.current_context:
-            self.current_context.docs_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.docs_manager = value
 
     @property
     def repository_server_manager(self):
-        return (
-            self.current_context.repository_server_manager
-            if self.current_context
-            else None
-        )
+        ctx = self.active_context
+        return ctx.repository_server_manager if ctx else None
 
     @repository_server_manager.setter
     def repository_server_manager(self, value):
-        if self.current_context:
-            self.current_context.repository_server_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.repository_server_manager = value
 
     @property
     def nomadnet_manager(self):
-        return self.current_context.nomadnet_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.nomadnet_manager if ctx else None
 
     @nomadnet_manager.setter
     def nomadnet_manager(self, value):
-        if self.current_context:
-            self.current_context.nomadnet_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.nomadnet_manager = value
 
     @property
     def message_router(self):
-        return self.current_context.message_router if self.current_context else None
+        ctx = self.active_context
+        return ctx.message_router if ctx else None
 
     @message_router.setter
     def message_router(self, value):
-        if self.current_context:
-            self.current_context.message_router = value
+        ctx = self.active_context
+        if ctx:
+            ctx.message_router = value
 
     @property
     def telephone_manager(self):
-        return self.current_context.telephone_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.telephone_manager if ctx else None
 
     @telephone_manager.setter
     def telephone_manager(self, value):
-        if self.current_context:
-            self.current_context.telephone_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.telephone_manager = value
 
     @property
     def voicemail_manager(self):
-        return self.current_context.voicemail_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.voicemail_manager if ctx else None
 
     @voicemail_manager.setter
     def voicemail_manager(self, value):
-        if self.current_context:
-            self.current_context.voicemail_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.voicemail_manager = value
 
     @property
     def ringtone_manager(self):
-        return self.current_context.ringtone_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.ringtone_manager if ctx else None
 
     @ringtone_manager.setter
     def ringtone_manager(self, value):
-        if self.current_context:
-            self.current_context.ringtone_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.ringtone_manager = value
 
     @property
     def notification_sound_manager(self):
-        return (
-            self.current_context.notification_sound_manager
-            if self.current_context
-            else None
-        )
+        ctx = self.active_context
+        return ctx.notification_sound_manager if ctx else None
 
     @notification_sound_manager.setter
     def notification_sound_manager(self, value):
-        if self.current_context:
-            self.current_context.notification_sound_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.notification_sound_manager = value
 
     @property
     def rncp_handler(self):
-        return self.current_context.rncp_handler if self.current_context else None
+        ctx = self.active_context
+        return ctx.rncp_handler if ctx else None
 
     @rncp_handler.setter
     def rncp_handler(self, value):
-        if self.current_context:
-            self.current_context.rncp_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rncp_handler = value
 
     @property
     def rns_filesync_handler(self):
-        return (
-            self.current_context.rns_filesync_handler if self.current_context else None
-        )
+        ctx = self.active_context
+        return ctx.rns_filesync_handler if ctx else None
 
     @rns_filesync_handler.setter
     def rns_filesync_handler(self, value):
-        if self.current_context:
-            self.current_context.rns_filesync_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rns_filesync_handler = value
 
     @property
     def rnsh_manager(self):
-        return self.current_context.rnsh_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.rnsh_manager if ctx else None
 
     @rnsh_manager.setter
     def rnsh_manager(self, value):
-        if self.current_context:
-            self.current_context.rnsh_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rnsh_manager = value
 
     @property
     def rnx_manager(self):
-        return self.current_context.rnx_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.rnx_manager if ctx else None
 
     @rnx_manager.setter
     def rnx_manager(self, value):
-        if self.current_context:
-            self.current_context.rnx_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rnx_manager = value
 
     @property
     def rnstatus_handler(self):
-        return self.current_context.rnstatus_handler if self.current_context else None
+        ctx = self.active_context
+        return ctx.rnstatus_handler if ctx else None
 
     @rnstatus_handler.setter
     def rnstatus_handler(self, value):
-        if self.current_context:
-            self.current_context.rnstatus_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rnstatus_handler = value
 
     @property
     def rnpath_handler(self):
-        return self.current_context.rnpath_handler if self.current_context else None
+        ctx = self.active_context
+        return ctx.rnpath_handler if ctx else None
 
     @rnpath_handler.setter
     def rnpath_handler(self, value):
-        if self.current_context:
-            self.current_context.rnpath_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rnpath_handler = value
 
     @property
     def rnpath_trace_handler(self):
-        return (
-            self.current_context.rnpath_trace_handler if self.current_context else None
-        )
+        ctx = self.active_context
+        return ctx.rnpath_trace_handler if ctx else None
 
     @rnpath_trace_handler.setter
     def rnpath_trace_handler(self, value):
-        if self.current_context:
-            self.current_context.rnpath_trace_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rnpath_trace_handler = value
 
     @property
     def rnprobe_handler(self):
-        return self.current_context.rnprobe_handler if self.current_context else None
+        ctx = self.active_context
+        return ctx.rnprobe_handler if ctx else None
 
     @rnprobe_handler.setter
     def rnprobe_handler(self, value):
-        if self.current_context:
-            self.current_context.rnprobe_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rnprobe_handler = value
 
     @property
     def translator_handler(self):
-        return self.current_context.translator_handler if self.current_context else None
+        ctx = self.active_context
+        return ctx.translator_handler if ctx else None
 
     @translator_handler.setter
     def translator_handler(self, value):
-        if self.current_context:
-            self.current_context.translator_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.translator_handler = value
 
     @property
     def bot_handler(self):
-        return self.current_context.bot_handler if self.current_context else None
+        ctx = self.active_context
+        return ctx.bot_handler if ctx else None
 
     @bot_handler.setter
     def bot_handler(self, value):
-        if self.current_context:
-            self.current_context.bot_handler = value
+        ctx = self.active_context
+        if ctx:
+            ctx.bot_handler = value
 
     @property
     def forwarding_manager(self):
-        return self.current_context.forwarding_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.forwarding_manager if ctx else None
 
     @forwarding_manager.setter
     def forwarding_manager(self, value):
-        if self.current_context:
-            self.current_context.forwarding_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.forwarding_manager = value
 
     @property
     def rrc_manager(self):
-        return self.current_context.rrc_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.rrc_manager if ctx else None
 
     @rrc_manager.setter
     def rrc_manager(self, value):
-        if self.current_context:
-            self.current_context.rrc_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rrc_manager = value
 
     @property
     def rrc_server_manager(self):
-        return self.current_context.rrc_server_manager if self.current_context else None
+        ctx = self.active_context
+        return ctx.rrc_server_manager if ctx else None
 
     @rrc_server_manager.setter
     def rrc_server_manager(self, value):
-        if self.current_context:
-            self.current_context.rrc_server_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.rrc_server_manager = value
 
     @property
     def community_interfaces_manager(self):
-        return (
-            self.current_context.community_interfaces_manager
-            if self.current_context
-            else None
-        )
+        ctx = self.active_context
+        return ctx.community_interfaces_manager if ctx else None
 
     @community_interfaces_manager.setter
     def community_interfaces_manager(self, value):
-        if self.current_context:
-            self.current_context.community_interfaces_manager = value
+        ctx = self.active_context
+        if ctx:
+            ctx.community_interfaces_manager = value
 
     @property
     def local_lxmf_destination(self):
-        return (
-            self.current_context.local_lxmf_destination
-            if self.current_context
-            else None
-        )
+        ctx = self.active_context
+        return ctx.local_lxmf_destination if ctx else None
 
     @local_lxmf_destination.setter
     def local_lxmf_destination(self, value):
-        if self.current_context:
-            self.current_context.local_lxmf_destination = value
+        ctx = self.active_context
+        if ctx:
+            ctx.local_lxmf_destination = value
 
     @property
     def auth_enabled(self):
@@ -1080,16 +1135,14 @@ class ReticulumMeshChat:
 
     @property
     def storage_path(self):
-        return (
-            self.current_context.storage_path
-            if self.current_context
-            else self.storage_dir
-        )
+        ctx = self.active_context
+        return ctx.storage_path if ctx else self.storage_dir
 
     @storage_path.setter
     def storage_path(self, value):
-        if self.current_context:
-            self.current_context.storage_path = value
+        ctx = self.active_context
+        if ctx:
+            ctx.storage_path = value
 
     def _check_bot_lifecycle(self) -> tuple[bool, str]:
         """Create, start, stop, and delete an Echo bot subprocess.
@@ -1435,16 +1488,19 @@ class ReticulumMeshChat:
 
     @property
     def database_path(self):
-        return self.current_context.database_path if self.current_context else None
+        ctx = self.active_context
+        return ctx.database_path if ctx else None
 
     @property
     def _identity_session_id(self):
-        return self.current_context.session_id if self.current_context else 0
+        ctx = self.active_context
+        return ctx.session_id if ctx else 0
 
     @_identity_session_id.setter
     def _identity_session_id(self, value):
-        if self.current_context:
-            self.current_context.session_id = value
+        ctx = self.active_context
+        if ctx:
+            ctx.session_id = value
 
     def get_public_path(self, filename=""):
         if self.public_dir_override:
@@ -1766,7 +1822,7 @@ class ReticulumMeshChat:
     def _startup_status_payload(self) -> dict:
         demo_fields = {
             "demo_mode": self.demo_mode,
-            "altcha_enabled": self.altcha_enabled,
+            "stamp_auth_enabled": self.stamp_auth_enabled,
             "auth_page_hint": self.auth_page_hint,
         }
         if self._startup_stage == "failed" or self._startup_error:
@@ -2148,6 +2204,14 @@ class ReticulumMeshChat:
                 ctx.teardown()
 
         dropped_identity_hashes = list(self.contexts.keys())
+        # An instance serving several people has a context per signed-in
+        # person. A reload used to drop them all and bring back only one, which
+        # signed everybody else out. Remember them so they can be restored.
+        self._contexts_to_restore_after_reload = [
+            h
+            for h in dropped_identity_hashes
+            if not self.current_context or h != self.current_context.identity_hash
+        ]
         self.contexts.clear()
         self.current_context = None
         self.running = False
@@ -2157,6 +2221,31 @@ class ReticulumMeshChat:
         for identity_hash in dropped_identity_hashes:
             self._drop_auto_resend_locks(identity_hash)
         gc.collect()
+
+    def _restore_contexts_after_reload(self):
+        """Bring back the contexts a reload tore down, besides the primary one.
+
+        Only matters when several people are signed in. Each is restored in
+        place, leaving current_context alone, so a reload costs everyone a
+        pause rather than a sign out. A context that will not come back is
+        skipped rather than failing the reload, and that person simply signs in
+        again.
+        """
+        pending = getattr(self, "_contexts_to_restore_after_reload", None)
+        if not pending:
+            return
+        self._contexts_to_restore_after_reload = []
+        for identity_hash in pending:
+            if identity_hash in self.contexts:
+                continue
+            try:
+                from meshchatx.src.backend.multiuser.middleware import (
+                    resolve_context,
+                )
+
+                resolve_context(self, identity_hash)
+            except Exception as exc:
+                print(f"Could not restore identity {identity_hash} after reload: {exc}")
 
     async def _send_rns_reload_status(
         self,
@@ -2916,6 +3005,7 @@ class ReticulumMeshChat:
                     self._write_reticulum_instance_name(instance_restore_name)
             self._mark_network_ready()
             self._finish_deferred_startup_services()
+            self._restore_contexts_after_reload()
             await self._send_rns_reload_status(
                 "done",
                 "RNS reload complete.",
@@ -3596,7 +3686,7 @@ class ReticulumMeshChat:
         ]
 
     def _default_announce_fetch_limit(self, aspect):
-        ctx = self.current_context
+        ctx = self.active_context
         if not ctx or not ctx.config:
             return 2500
         keys = {
@@ -3617,7 +3707,7 @@ class ReticulumMeshChat:
         return self.get_package_version("lxst", getattr(LXST, "__version__", "unknown"))
 
     async def announce_loop(self, session_id, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
 
@@ -3680,7 +3770,7 @@ class ReticulumMeshChat:
 
     # automatically syncs propagation nodes based on user config
     async def announce_sync_propagation_nodes(self, session_id, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
 
@@ -3739,7 +3829,7 @@ class ReticulumMeshChat:
             await asyncio.sleep(1)
 
     async def crawler_loop(self, session_id, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
 
@@ -3791,7 +3881,7 @@ class ReticulumMeshChat:
                 await asyncio.sleep(1)
 
     async def process_crawler_task(self, task, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
 
@@ -3895,7 +3985,7 @@ class ReticulumMeshChat:
 
     # uses the provided destination hash as the active propagation node
     def set_active_propagation_node(self, destination_hash: str | None, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.message_router:
             return
 
@@ -3922,7 +4012,7 @@ class ReticulumMeshChat:
 
     # stops the in progress propagation node sync
     def stop_propagation_node_sync(self, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.message_router:
             return
         router = ctx.message_router
@@ -3944,7 +4034,7 @@ class ReticulumMeshChat:
                 router.propagation_transfer_progress = 0.0
 
     async def _request_propagation_node_messages(self, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.message_router:
             return
 
@@ -3966,7 +4056,7 @@ class ReticulumMeshChat:
         await self.send_config_to_websocket_clients(context=ctx)
 
     def _get_propagation_sync_metrics(self, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return None
 
@@ -3984,7 +4074,7 @@ class ReticulumMeshChat:
         return self._propagation_sync_metrics[key]
 
     def _begin_propagation_sync_metrics(self, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.database:
             return
 
@@ -4002,7 +4092,7 @@ class ReticulumMeshChat:
         metrics["messages_hidden"] = 0
 
     def _collect_propagation_sync_metrics(self, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.database:
             return {
                 "messages_stored": 0,
@@ -4062,7 +4152,7 @@ class ReticulumMeshChat:
 
     # stops and removes the active propagation node
     def remove_active_propagation_node(self, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
         self.stop_propagation_node_sync(context=ctx)
@@ -4077,7 +4167,7 @@ class ReticulumMeshChat:
 
     # enables or disables the local lxmf propagation node
     def enable_local_propagation_node(self, enabled: bool = True, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.message_router:
             return
         try:
@@ -4091,20 +4181,20 @@ class ReticulumMeshChat:
             )
 
     def stop_local_propagation_node(self, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
         self.enable_local_propagation_node(False, context=ctx)
 
     def restart_local_propagation_node(self, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
         self.stop_local_propagation_node(context=ctx)
         self.enable_local_propagation_node(True, context=ctx)
 
     def get_local_propagation_node_stats(self, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return None
 
@@ -4720,7 +4810,7 @@ class ReticulumMeshChat:
         duration,
         context=None,
     ):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
         # Add system notification
@@ -4747,7 +4837,7 @@ class ReticulumMeshChat:
 
     # handle receiving a new audio call
     def on_incoming_telephone_call(self, caller_identity: RNS.Identity, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
 
@@ -4841,7 +4931,7 @@ class ReticulumMeshChat:
         caller_identity: RNS.Identity,
         context=None,
     ):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
         print(f"on_telephone_call_established: {caller_identity.hash.hex()}")
@@ -4856,7 +4946,7 @@ class ReticulumMeshChat:
         )
 
     def on_telephone_call_ended(self, caller_identity: RNS.Identity, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
         # Stop voicemail recording if active
@@ -4940,7 +5030,7 @@ class ReticulumMeshChat:
         )
 
     def on_telephone_initiation_status(self, status, target_hash, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
 
@@ -4993,7 +5083,7 @@ class ReticulumMeshChat:
             return
         if not msg.room:
             return
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if ctx is None:
             return
         from meshchatx.src.backend.rrc import protocol as rrc_protocol
@@ -5027,7 +5117,7 @@ class ReticulumMeshChat:
         )
 
     def _mark_rrc_mention_notifications_viewed(self, hub_hash_hex, room, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if ctx is None or not room:
             return
         with contextlib.suppress(ValueError):
@@ -5283,6 +5373,15 @@ class ReticulumMeshChat:
     def _define_routes(self, routes):
         from meshchatx.src.backend.http.register import register_all_routes
 
+        # Account routes exist only on an instance serving several people. The
+        # import sits behind the check so a single user install never loads it.
+        if multiuser_is_enabled(self.storage_dir):
+            from meshchatx.src.backend.multiuser.routes import (
+                register_multiuser_routes,
+            )
+
+            register_multiuser_routes(routes, self)
+
         (
             auth_middleware,
             mime_type_middleware,
@@ -5502,10 +5601,22 @@ class ReticulumMeshChat:
             self._encrypted_cookie_storage(use_https),
         )
 
+        # Serving more than one person is off unless switched on, and while it
+        # is off nothing from that package is imported and no middleware is
+        # added, so a single user install carries none of its cost.
+        multiuser_middlewares = []
+        if multiuser_is_enabled(self.storage_dir):
+            from meshchatx.src.backend.multiuser.middleware import (
+                create_multiuser_middleware,
+            )
+
+            multiuser_middlewares = [create_multiuser_middleware(self)]
+
         # add other middlewares
         app.middlewares.extend(
             [
                 auth_middleware,
+                *multiuser_middlewares,
                 mime_type_middleware,
                 security_middleware,
                 csrf_middleware,
@@ -5641,7 +5752,7 @@ class ReticulumMeshChat:
 
     # auto backup loop
     async def auto_backup_loop(self, session_id, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
 
@@ -5665,7 +5776,7 @@ class ReticulumMeshChat:
     async def local_message_retention_loop(self, session_id, context=None):
         from meshchatx.src.backend import local_message_retention as lmr
 
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
         await asyncio.sleep(lmr.LOCAL_RETENTION_STARTUP_GRACE_SECONDS)
@@ -5708,7 +5819,7 @@ class ReticulumMeshChat:
             await asyncio.sleep(60)
 
     async def telemetry_tracking_loop(self, session_id, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
 
@@ -5752,7 +5863,7 @@ class ReticulumMeshChat:
     async def announce(self, context=None):
         if self.demo_mode:
             return
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
 
@@ -5777,7 +5888,7 @@ class ReticulumMeshChat:
 
     # handle syncing propagation nodes
     async def sync_propagation_nodes(self, context=None, force=False):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return False
 
@@ -6770,7 +6881,7 @@ class ReticulumMeshChat:
         is_manual: bool = False,
         context=None,
     ):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return None
         return ctx.nomadnet_manager.archive_page(
@@ -7285,7 +7396,7 @@ class ReticulumMeshChat:
 
     # broadcasts config to all websocket clients
     async def send_config_to_websocket_clients(self, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
         await self.websocket_broadcast(
@@ -7299,7 +7410,7 @@ class ReticulumMeshChat:
 
     # broadcasts to all websocket clients that we just announced
     async def send_announced_to_websocket_clients(self, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
         await self.websocket_broadcast(
@@ -7335,7 +7446,7 @@ class ReticulumMeshChat:
 
     # returns a dictionary of config
     def get_config_dict(self, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return {}
         return {
@@ -7954,7 +8065,7 @@ class ReticulumMeshChat:
         background_colour: str,
         context=None,
     ):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
 
@@ -7981,7 +8092,7 @@ class ReticulumMeshChat:
 
     def _related_hashes_for_contact_lookup(self, source_hash: str, context=None):
         """Collect identity/LXMF/LXST hashes that may identify the same peer."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         related = []
         seen = set()
 
@@ -8041,7 +8152,7 @@ class ReticulumMeshChat:
         caller's identity hash. Bridge those forms via announces and derived
         destination hashes so contacts-only call policy works.
         """
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.database or not source_hash:
             return None
         try:
@@ -8055,7 +8166,7 @@ class ReticulumMeshChat:
 
     def _collect_blocked_identity_hashes(self, context=None) -> list:
         """Identity-hash bytes for LXST set_blocked from the block list."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         out = []
         seen = set()
         if not ctx or not ctx.database:
@@ -8095,7 +8206,7 @@ class ReticulumMeshChat:
         This rejects unauthorized callers before RINGING instead of relying only
         on a delayed hangup after the ringing callback.
         """
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not getattr(ctx, "telephone_manager", None):
             return
 
@@ -8176,7 +8287,7 @@ class ReticulumMeshChat:
         caller identity is treated as filtered when a contact gate is on.
         Unexpected errors fail closed.
         """
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not getattr(ctx, "config", None):
             return True
         try:
@@ -8202,7 +8313,7 @@ class ReticulumMeshChat:
         on any destination matches the identity. Unexpected database errors
         fail closed so inbound LXMF and LXST do not treat a broken ACL as open.
         """
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.database:
             return False
         try:
@@ -8225,7 +8336,7 @@ class ReticulumMeshChat:
         context=None,
     ) -> None:
         """Apply Reticulum blackhole or drop_path after a peer was added to the block list."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         try:
             if not hasattr(self, "reticulum") or not self.reticulum:
                 return
@@ -8276,7 +8387,7 @@ class ReticulumMeshChat:
         context=None,
     ) -> None:
         """Remove contact and stamp/ticket state for a blocked destination."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.database:
             return
         try:
@@ -8335,7 +8446,7 @@ class ReticulumMeshChat:
 
     def banish_lxmf_peer(self, destination_hash: str, context=None) -> None:
         """Banish a peer by identity: persist every known dest, blackhole, wipe history."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.database:
             return
         destination_hash = normalize_hex_identifier(destination_hash)
@@ -8364,7 +8475,7 @@ class ReticulumMeshChat:
 
     def lift_lxmf_peer_banishment(self, destination_hash: str, context=None) -> None:
         """Lift banishment for an identity and every known destination hash."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.database:
             return
         destination_hash = normalize_hex_identifier(destination_hash)
@@ -8399,7 +8510,7 @@ class ReticulumMeshChat:
 
     def check_spam_keywords(self, title: str, content: str, context=None) -> bool:
         """Return whether title/content match configured spam keywords."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.database:
             return False
         try:
@@ -8409,7 +8520,7 @@ class ReticulumMeshChat:
 
     def _apply_lxmf_flood_stamp_cost(self, cost: int, context=None) -> None:
         """Apply the given inbound stamp cost for flood protection and re-announce."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.message_router or not ctx.local_lxmf_destination:
             return
         cost = max(0, min(254, cost))
@@ -8434,7 +8545,7 @@ class ReticulumMeshChat:
 
     def _check_lxmf_flood_protection(self, context=None) -> None:
         """Check incoming LXMF message rate and auto-adjust stamp cost if flooding."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.config:
             return
         if not ctx.config.lxmf_flood_protection_enabled.get():
@@ -8493,7 +8604,7 @@ class ReticulumMeshChat:
 
     async def lxmf_flood_protection_cooldown_loop(self, session_id, context=None):
         """Background loop to step down flood protection stamp cost during quiet periods."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
         await asyncio.sleep(60)
@@ -8510,7 +8621,7 @@ class ReticulumMeshChat:
         context=None,
         contact=None,
     ) -> str:
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.database:
             return ""
         parts: list[str] = []
@@ -8558,7 +8669,7 @@ class ReticulumMeshChat:
         message_title=None,
         message_content=None,
     ):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.config:
             return None
         raw = ctx.config.lxmf_sieve_filters_json.get()
@@ -8635,7 +8746,7 @@ class ReticulumMeshChat:
             fid_int = int(fid)
         except (TypeError, ValueError):
             return
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.database:
             return
         try:
@@ -8669,7 +8780,7 @@ class ReticulumMeshChat:
         message_title=None,
         message_content=None,
     ):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.config:
             return
         if not ctx.config.message_blocklist_enabled.get():
@@ -8702,7 +8813,7 @@ class ReticulumMeshChat:
 
     def on_lxmf_delivery(self, lxmf_message: LXMF.LXMessage, context=None):
         """Handle inbound LXMF delivery from Reticulum (synchronous callback)."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.running or not ctx.database:
             logger.warning(
                 "Dropping inbound LXMF delivery: context not ready "
@@ -9078,7 +9189,7 @@ class ReticulumMeshChat:
     # handles lxmf message forwarding logic
     def handle_forwarding(self, lxmf_message: LXMF.LXMessage, context=None):
         try:
-            ctx = context or self.current_context
+            ctx = context or self.active_context
             if not ctx:
                 return
 
@@ -9288,7 +9399,7 @@ class ReticulumMeshChat:
             pass
 
     def on_lxmf_sending_state_updated(self, lxmf_message, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.database:
             return
 
@@ -9360,7 +9471,7 @@ class ReticulumMeshChat:
         lxmf_message: LXMF.LXMessage,
         context=None,
     ):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
 
@@ -9387,7 +9498,7 @@ class ReticulumMeshChat:
     # upserts the provided lxmf message to the database
     def _is_self_lxmf_destination(self, destination_hash: str, context=None) -> bool:
         """True when destination_hash refers to this identity's own LXMF peer."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.local_lxmf_destination:
             return False
         norm_dest = normalize_hex_identifier(destination_hash)
@@ -9419,7 +9530,7 @@ class ReticulumMeshChat:
         state_override: str | None = None,
         method_override: str | None = None,
     ):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
 
@@ -9491,7 +9602,7 @@ class ReticulumMeshChat:
         no_display: bool = False,
         context=None,
     ) -> LXMF.LXMessage:
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             raise RuntimeError("No identity context available for sending message")
 
@@ -9828,7 +9939,7 @@ class ReticulumMeshChat:
         emoji: str,
         context=None,
     ) -> LXMF.LXMessage:
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             raise RuntimeError("No identity context available for sending reaction")
         return await self.send_message(
@@ -9842,7 +9953,7 @@ class ReticulumMeshChat:
 
     # get hash of current icon appearance configuration
     def get_current_icon_hash(self, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return None
 
@@ -9864,7 +9975,7 @@ class ReticulumMeshChat:
         timestamp_override=None,
         context=None,
     ):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
 
@@ -9964,7 +10075,7 @@ class ReticulumMeshChat:
 
     # updates lxmf message in database and broadcasts to websocket until it's delivered, or it fails
     async def handle_lxmf_message_progress(self, lxmf_message, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
 
@@ -10030,7 +10141,7 @@ class ReticulumMeshChat:
         context=None,
     ):
         """Handle lxst.telephony announces (synchronous Reticulum callback)."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.running or not ctx.announce_manager or not ctx.database:
             return
         identity_hash = announced_identity.hash.hex()
@@ -10090,7 +10201,7 @@ class ReticulumMeshChat:
         context=None,
     ):
         """Handle lxmf.delivery announces (synchronous Reticulum callback)."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.running or not ctx.announce_manager or not ctx.database:
             return
 
@@ -10173,7 +10284,7 @@ class ReticulumMeshChat:
         context=None,
     ):
         """Handle lxmf.propagation announces (synchronous Reticulum callback)."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.running or not ctx.announce_manager or not ctx.database:
             return
 
@@ -10223,7 +10334,7 @@ class ReticulumMeshChat:
         destination_hash: str,
         context=None,
     ):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
 
@@ -10373,7 +10484,7 @@ class ReticulumMeshChat:
         context=None,
     ):
         """Handle Relay Chat rrc.hub announces for hub discovery."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.running or not ctx.announce_manager or not ctx.database:
             return
         if ctx.config and not ctx.config.rrc_enabled.get():
@@ -10431,7 +10542,7 @@ class ReticulumMeshChat:
         context=None,
     ):
         """Handle nomadnetwork.node announces (synchronous Reticulum callback)."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.running or not ctx.announce_manager or not ctx.database:
             return
 
@@ -10498,7 +10609,7 @@ class ReticulumMeshChat:
         context=None,
     ):
         """Handle map-data-v1 announces (synchronous Reticulum callback)."""
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx or not ctx.running or not ctx.announce_manager or not ctx.database:
             return
         if not announced_identity or not announced_identity.hash:
@@ -10630,7 +10741,7 @@ class ReticulumMeshChat:
 
     # queues a crawler task for the provided destination and path
     def queue_crawler_task(self, destination_hash: str, page_path: str, context=None):
-        ctx = context or self.current_context
+        ctx = context or self.active_context
         if not ctx:
             return
         ctx.database.misc.upsert_crawl_task(destination_hash, page_path)
@@ -11130,7 +11241,14 @@ def main():
         )
 
     demo_mode = bool(args.demo)
-    altcha_on = altcha_enabled_from_env()
+    # Accounts mean strangers can sign themselves up, so the proof of work is
+    # on by default there. An explicit MESHCHAT_STAMP_AUTH_ENABLED still wins,
+    # in either direction.
+    stamp_auth_storage_dir = args.storage_dir or os.path.join("storage")
+    stamp_auth_on = configure_stamp_auth(
+        stamp_auth_storage_dir,
+        multiuser_enabled=multiuser_is_enabled(stamp_auth_storage_dir),
+    )
 
     reticulum_meshchat = ReticulumMeshChat(
         identity,
@@ -11151,7 +11269,7 @@ def main():
         defer_network_setup=not needs_immediate_network,
         headless=bool(args.headless),
         demo_mode=demo_mode,
-        altcha_enabled=altcha_on,
+        stamp_auth_enabled=stamp_auth_on,
     )
 
     # store recovery on app for wiring with identity context

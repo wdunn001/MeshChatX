@@ -25,6 +25,10 @@
             "path": "/api/v1/app/changelog/seen"
         },
         {
+            "method": "POST",
+            "path": "/api/v1/app/hosted-onboarding/welcome/seen"
+        },
+        {
             "method": "GET",
             "path": "/api/v1/app/info"
         },
@@ -46,7 +50,11 @@
         },
         {
             "method": "GET",
-            "path": "/api/v1/auth/altcha/challenge"
+            "path": "/api/v1/app/ui-profile"
+        },
+        {
+            "method": "PUT",
+            "path": "/api/v1/app/ui-profile"
         },
         {
             "method": "GET",
@@ -62,7 +70,15 @@
         },
         {
             "method": "POST",
+            "path": "/api/v1/auth/mode"
+        },
+        {
+            "method": "POST",
             "path": "/api/v1/auth/setup"
+        },
+        {
+            "method": "GET",
+            "path": "/api/v1/auth/stamp/challenge"
         },
         {
             "method": "GET",
@@ -809,6 +825,46 @@
             "path": "/api/v1/meshchatx-docs/list"
         },
         {
+            "method": "GET",
+            "path": "/api/v1/multiuser/accounts"
+        },
+        {
+            "method": "DELETE",
+            "path": "/api/v1/multiuser/accounts/{account_id}"
+        },
+        {
+            "method": "PATCH",
+            "path": "/api/v1/multiuser/accounts/{account_id}"
+        },
+        {
+            "method": "POST",
+            "path": "/api/v1/multiuser/login"
+        },
+        {
+            "method": "POST",
+            "path": "/api/v1/multiuser/logout"
+        },
+        {
+            "method": "GET",
+            "path": "/api/v1/multiuser/me"
+        },
+        {
+            "method": "POST",
+            "path": "/api/v1/multiuser/register"
+        },
+        {
+            "method": "GET",
+            "path": "/api/v1/multiuser/registration"
+        },
+        {
+            "method": "PATCH",
+            "path": "/api/v1/multiuser/registration"
+        },
+        {
+            "method": "GET",
+            "path": "/api/v1/multiuser/status"
+        },
+        {
             "method": "DELETE",
             "path": "/api/v1/nomadnet/archives"
         },
@@ -1003,6 +1059,14 @@
         {
             "method": "DELETE",
             "path": "/api/v1/repository-server/upload/{name}"
+        },
+        {
+            "method": "POST",
+            "path": "/api/v1/resolve"
+        },
+        {
+            "method": "POST",
+            "path": "/api/v1/resolve/pin"
         },
         {
             "method": "GET",
@@ -1719,6 +1783,14 @@
         {
             "method": "GET",
             "path": "/manifest.json"
+        },
+        {
+            "method": "GET",
+            "path": "/reticulum-docs/{filename:.*}"
+        },
+        {
+            "method": "GET",
+            "path": "/robots.txt"
         },
         {
             "method": "GET",

@@ -168,6 +168,7 @@
                     <SettingsNav
                         :active-tab="settingsNavActiveTab"
                         :match-counts="settingsSearchActive ? settingsSearchMatchCounts : null"
+                        :visible-tabs="visibleSettingsTabs"
                         @select="onSettingsNavSelect"
                     />
                     <div class="settings-panel__content">
@@ -2901,6 +2902,7 @@ import KeyboardShortcuts from "../../js/KeyboardShortcuts";
 import ElectronUtils from "../../js/ElectronUtils";
 import AndroidBridge from "../../js/rnode/AndroidBridge";
 import GlobalState from "../../js/GlobalState";
+import { isInstanceAdmin, settingsSectionAllowed } from "../../js/accountRole.js";
 import {
     numOrNull,
     sanitizeColorConfigFields as normalizeConfigColors,
@@ -3201,6 +3203,12 @@ export default {
             }
             return this.activeSettingsTab;
         },
+        visibleSettingsTabs() {
+            // A tab whose every section is unavailable to this account is an
+            // empty page, so it is not offered at all. Off a shared instance
+            // this returns the whole list unchanged.
+            return SETTINGS_TABS.filter((tab) => tab.sections.some((key) => this.sectionAvailable(key)));
+        },
         settingsSearchMatchCounts() {
             /** @type {Record<string, number>} */
             const counts = {};
@@ -3413,29 +3421,36 @@ export default {
         window.addEventListener("keydown", this.onSettingsSearchHotkey);
 
         this.getConfig();
-        this.getServerSecurity();
-        this.loadExposureAcknowledgements();
-        this.getTrustedTelemetryPeers();
         this.loadStickerCount();
         this.loadGifCount();
         this.loadVisualiserDisplayPrefsFromStorage();
         this.loadBatterySaverPrefsFromStorage();
-        this.loadBatteryInterfaceRows();
         this.loadDesktopCloseSettings();
         this.loadScreenSecuritySettings();
-        this.loadReticulumInstanceSettings();
         this.loadAndroidShellPrivacy();
+        // Everything below reads the instance itself. An ordinary account on
+        // a shared instance is refused all of it, so it is not asked for: an
+        // unanswerable request is a 403 in the console and a section that
+        // renders empty, neither of which tells the person anything.
+        this.loadInstanceOwnedSettings();
     },
     methods: {
         onIdentitySwitched() {
             this.getConfig();
-            this.getServerSecurity();
-            this.getTrustedTelemetryPeers();
             this.loadStickerCount();
             this.loadGifCount();
+            this.loadAndroidShellPrivacy();
+            this.loadInstanceOwnedSettings();
+        },
+        loadInstanceOwnedSettings() {
+            if (!isInstanceAdmin(GlobalState)) {
+                return;
+            }
+            this.getServerSecurity();
+            this.loadExposureAcknowledgements();
+            this.getTrustedTelemetryPeers();
             this.loadBatteryInterfaceRows();
             this.loadReticulumInstanceSettings();
-            this.loadAndroidShellPrivacy();
         },
         loadBatterySaverPrefsFromStorage() {
             this.batterySaver = loadBatterySaverPrefs();
@@ -3871,6 +3886,14 @@ export default {
         },
         sectionAvailable(sectionKey) {
             if (sectionKey === "plugins" && GlobalState.pluginsEnabled === false) {
+                return false;
+            }
+            // On a shared instance most of this page configures the machine
+            // rather than the person reading it. Transport, interfaces, the
+            // web exposure settings and the maintenance tools all belong to
+            // whoever runs it, and the backend refuses those calls from an
+            // ordinary account anyway.
+            if (!settingsSectionAllowed(sectionKey, GlobalState)) {
                 return false;
             }
             return true;

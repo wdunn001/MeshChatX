@@ -77,13 +77,14 @@
                             />
                         </div>
 
-                        <div v-if="altchaEnabled" class="min-h-[52px]">
-                            <altcha-widget
-                                ref="altchaWidget"
-                                :challenge="altchaChallengeUrl"
-                                auto="onsubmit"
-                                name="altcha"
-                            ></altcha-widget>
+                        <div v-if="stampAuthEnabled && solving" class="min-h-[52px] space-y-1">
+                            <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-zinc-700">
+                                <div class="h-full w-1/3 animate-pulse rounded-full bg-blue-500"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-zinc-400" role="status">
+                                {{ $t("auth.stamp_solving") }}
+                                {{ $t("auth.stamp_progress", solveProgressParams) }}
+                            </p>
                         </div>
 
                         <div
@@ -109,9 +110,8 @@
 </template>
 
 <script>
-import "altcha";
-
 import logoUrl from "../../assets/images/logo.png";
+import { solveStampChallenge } from "../../js/stampChallenge.js";
 
 export default {
     name: "AuthPage",
@@ -123,11 +123,20 @@ export default {
             error: "",
             isLoading: false,
             isSetup: false,
-            altchaEnabled: false,
+            stampAuthEnabled: false,
+            solving: false,
+            solveProgress: { attempts: 0, elapsedMs: 0 },
             demoMode: false,
             authPageHint: "",
-            altchaChallengeUrl: "/api/v1/auth/altcha/challenge",
         };
+    },
+    computed: {
+        solveProgressParams() {
+            return {
+                attempts: String(this.solveProgress.attempts),
+                seconds: (this.solveProgress.elapsedMs / 1000).toFixed(1),
+            };
+        },
     },
     async mounted() {
         await this.checkAuthStatus();
@@ -149,7 +158,7 @@ export default {
                 }
 
                 this.isSetup = !status.password_set;
-                this.altchaEnabled = status.altcha_enabled === true;
+                this.stampAuthEnabled = status.stamp_auth_enabled === true;
                 this.demoMode = status.demo_mode === true;
                 const hint = status.auth_page_hint;
                 this.authPageHint = typeof hint === "string" ? hint : "";
@@ -158,18 +167,23 @@ export default {
                 this.error = this.$t("auth.status_check_failed");
             }
         },
-        readAltchaPayload() {
-            const widget = this.$refs.altchaWidget;
-            if (!widget) {
+        // Fetches a fresh challenge and solves it client side (in wasm),
+        // reporting real progress rather than a spinner, since solving can
+        // visibly take a few seconds on a phone. Returns the stamp_proof
+        // body field, or null with this.error already set.
+        async solveStamp() {
+            this.solving = true;
+            this.solveProgress = { attempts: 0, elapsedMs: 0 };
+            try {
+                return await solveStampChallenge("/api/v1/auth/stamp/challenge", (progress) => {
+                    this.solveProgress = progress;
+                });
+            } catch (e) {
+                this.error = this.$t("auth.stamp_unavailable");
                 return null;
+            } finally {
+                this.solving = false;
             }
-            if (typeof widget.getPayload === "function") {
-                return widget.getPayload();
-            }
-            if (widget.value) {
-                return widget.value;
-            }
-            return null;
         },
         async handleSubmit() {
             this.error = "";
@@ -191,14 +205,16 @@ export default {
             try {
                 const endpoint = this.isSetup ? "/api/v1/auth/setup" : "/api/v1/auth/login";
                 const body = { password: this.password };
-                if (this.altchaEnabled) {
-                    const altchaPayload = this.readAltchaPayload();
-                    if (!altchaPayload) {
-                        this.error = this.$t("auth.altcha_required");
+                if (this.stampAuthEnabled) {
+                    const stampProof = await this.solveStamp();
+                    if (!stampProof) {
+                        if (!this.error) {
+                            this.error = this.$t("auth.stamp_required");
+                        }
                         this.isLoading = false;
                         return;
                     }
-                    body.altcha = altchaPayload;
+                    body.stamp_proof = stampProof;
                 }
                 await window.api.post(endpoint, body);
 

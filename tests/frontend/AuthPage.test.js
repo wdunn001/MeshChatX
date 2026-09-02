@@ -1,6 +1,16 @@
 import { mount } from "@vue/test-utils";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import AuthPage from "../../meshchatx/src/frontend/components/auth/AuthPage.vue";
+import { solveStampChallenge } from "../../meshchatx/src/frontend/js/stampChallenge.js";
+
+// The real solveStampChallenge fetches a challenge over the network and
+// solves it in wasm, neither of which is available (or wanted) in jsdom.
+// Mocking the whole module keeps these tests at the level of this
+// component's own gating and error handling, not the solver itself (that
+// belongs to StampSolver.test.js / the backend stamp_auth oracle tests).
+vi.mock("../../meshchatx/src/frontend/js/stampChallenge.js", () => ({
+    solveStampChallenge: vi.fn(),
+}));
 
 const authI18n = {
     "auth.setup_title": "Initial Setup",
@@ -16,10 +26,33 @@ const authI18n = {
     "auth.set_password": "Set Password",
     "auth.login": "Login",
     "auth.passwords_mismatch": "Passwords do not match",
-    "auth.altcha_required": "Complete the verification challenge first",
+    "auth.stamp_required": "Complete the proof of work challenge first",
+    "auth.stamp_solving": "Solving proof of work...",
+    "auth.stamp_progress": "{attempts} attempts, {seconds}s so far",
+    "auth.stamp_failed": "That proof of work failed. Try again.",
+    "auth.stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
     "auth.status_check_failed": "Failed to check authentication status",
     "auth.failed": "Authentication failed",
     "app.demo_mode_active": "Demo mode active",
+};
+
+function translate(key, params) {
+    let text = authI18n[key] || key;
+    if (params) {
+        for (const [k, v] of Object.entries(params)) {
+            text = text.replace(`{${k}}`, v);
+        }
+    }
+    return text;
+}
+
+const SOLVED_PROOF = {
+    material: "aa".repeat(32),
+    cost: 17,
+    expand_rounds: 25,
+    expires_at: 9999999999,
+    signature: "sig",
+    stamp: "bb".repeat(32),
 };
 
 describe("AuthPage.vue", () => {
@@ -49,6 +82,8 @@ describe("AuthPage.vue", () => {
             },
             writable: true,
         });
+
+        solveStampChallenge.mockReset();
     });
 
     afterEach(() => {
@@ -61,12 +96,7 @@ describe("AuthPage.vue", () => {
             global: {
                 mocks: {
                     $router: routerMock,
-                    $t: (key) => authI18n[key] || key,
-                },
-                config: {
-                    compilerOptions: {
-                        isCustomElement: (tag) => tag === "altcha-widget",
-                    },
+                    $t: translate,
                 },
             },
         });
@@ -236,6 +266,7 @@ describe("AuthPage.vue", () => {
         expect(axiosMock.post).toHaveBeenCalledWith("/api/v1/auth/login", {
             password: "password123",
         });
+        expect(solveStampChallenge).not.toHaveBeenCalled();
     });
 
     it("reloads page after successful login", async () => {
@@ -372,5 +403,92 @@ describe("AuthPage.vue", () => {
         await wrapper.vm.$nextTick();
 
         expect(wrapper.vm.error).toContain("Failed to check");
+    });
+
+    describe("with stamp auth enabled", () => {
+        beforeEach(() => {
+            axiosMock.get.mockResolvedValue({
+                data: {
+                    auth_enabled: true,
+                    authenticated: false,
+                    password_set: true,
+                    stamp_auth_enabled: true,
+                },
+            });
+        });
+
+        it("solves a stamp and attaches it to the login request", async () => {
+            solveStampChallenge.mockResolvedValue(SOLVED_PROOF);
+
+            const wrapper = mountAuthPage();
+            await wrapper.vm.$nextTick();
+            await wrapper.vm.checkAuthStatus();
+            await wrapper.vm.$nextTick();
+
+            expect(wrapper.vm.stampAuthEnabled).toBe(true);
+
+            wrapper.vm.password = "password123";
+            await wrapper.vm.handleSubmit();
+            await wrapper.vm.$nextTick();
+
+            expect(solveStampChallenge).toHaveBeenCalledWith(
+                "/api/v1/auth/stamp/challenge",
+                expect.any(Function),
+            );
+            expect(axiosMock.post).toHaveBeenCalledWith("/api/v1/auth/login", {
+                password: "password123",
+                stamp_proof: SOLVED_PROOF,
+            });
+        });
+
+        it("shows live progress while solving", async () => {
+            let reportProgress;
+            let releaseSolve;
+            solveStampChallenge.mockImplementation((_url, onProgress) => {
+                reportProgress = onProgress;
+                return new Promise((resolve) => {
+                    releaseSolve = () => resolve(SOLVED_PROOF);
+                });
+            });
+
+            const wrapper = mountAuthPage();
+            await wrapper.vm.$nextTick();
+            await wrapper.vm.checkAuthStatus();
+            await wrapper.vm.$nextTick();
+
+            wrapper.vm.password = "password123";
+            const submitPromise = wrapper.vm.handleSubmit();
+            await wrapper.vm.$nextTick();
+
+            expect(wrapper.vm.solving).toBe(true);
+            reportProgress({ attempts: 500, elapsedMs: 900 });
+            await wrapper.vm.$nextTick();
+
+            expect(wrapper.text()).toContain("Solving proof of work");
+            expect(wrapper.text()).toContain("500 attempts, 0.9s so far");
+
+            releaseSolve();
+            await submitPromise;
+            expect(wrapper.vm.solving).toBe(false);
+        });
+
+        it("blocks submission and surfaces a readable error when the wasm solver is unavailable", async () => {
+            solveStampChallenge.mockRejectedValue(new Error("stamp_wasm_unavailable"));
+
+            const wrapper = mountAuthPage();
+            await wrapper.vm.$nextTick();
+            await wrapper.vm.checkAuthStatus();
+            await wrapper.vm.$nextTick();
+
+            wrapper.vm.password = "password123";
+            await wrapper.vm.handleSubmit();
+            await wrapper.vm.$nextTick();
+
+            expect(axiosMock.post).not.toHaveBeenCalled();
+            expect(wrapper.vm.error).toBe(
+                "Proof of work could not run in this browser. Reload the page and try again.",
+            );
+            expect(wrapper.vm.isLoading).toBe(false);
+        });
     });
 });

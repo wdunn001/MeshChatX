@@ -2350,12 +2350,7 @@ export default {
             // Already addressable: a bare destination hash, an absolute
             // hash:path, a relative path, or anything carrying a scheme. A hash
             // is never sent to a resolver.
-            if (
-                !raw ||
-                raw.includes(":") ||
-                raw.startsWith("/") ||
-                /^[0-9a-fA-F]{32}$/.test(raw)
-            ) {
+            if (!raw || raw.includes(":") || raw.startsWith("/") || /^[0-9a-fA-F]{32}$/.test(raw)) {
                 return url;
             }
 

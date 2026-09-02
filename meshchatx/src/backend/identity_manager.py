@@ -29,19 +29,22 @@ class IdentityManager:
             raise ValueError(msg)
         return private_key
 
-    def backup_identity(self, identity: RNS.Identity) -> dict:
-        identity_bytes = self.get_identity_bytes(identity)
-        target_path = self.identity_file_path or os.path.join(
-            self.storage_dir,
-            "identity",
-        )
-        os.makedirs(os.path.dirname(target_path), exist_ok=True)
-        with open(target_path, "wb") as f:
-            f.write(identity_bytes)
-        return {
-            "path": target_path,
-            "size": os.path.getsize(target_path),
-        }
+    def backup_identity(self, identity: RNS.Identity) -> bytes:
+        """The identity's private key bytes, in memory only.
+
+        This used to write the bytes to self.identity_file_path (or
+        storage_dir/identity) and read them back. That path is instance
+        wide: one IdentityManager, constructed once for the whole app, owns
+        it, not one per identity. On a single user desktop install that is
+        harmless, since there is only ever one identity to write there. On
+        a shared instance it is a private key leak: two accounts exporting
+        at once both write to the same file, so whichever finishes last
+        wins, and the other request can read back a key that is not its
+        own. Serving straight from memory, the same shape
+        backup_identity_base32 below already used, removes the shared path
+        rather than trying to make writing to it safe.
+        """
+        return self.get_identity_bytes(identity)
 
     def backup_identity_base32(self, identity: RNS.Identity) -> str:
         return base64.b32encode(self.get_identity_bytes(identity)).decode("utf-8")

@@ -44,7 +44,7 @@
             @open-interfaces="onOpenInterfacesForRecovery"
         />
 
-        <RouterView v-if="$route.name === 'auth'" />
+        <RouterView v-if="isStandaloneRoute" />
 
         <template v-else>
             <div
@@ -425,10 +425,18 @@
         <Toast />
         <ConfirmDialog />
         <PromptDialog />
-        <CommandPalette ref="commandPalette" />
+        <CommandPalette v-if="!isStandaloneRoute" ref="commandPalette" />
         <IntegrityWarningModal />
         <ChangelogModal ref="changelogModal" :app-version="appInfo?.version" />
         <TutorialModal ref="tutorialModal" />
+        <HostedWelcomeCard
+            ref="hostedWelcomeCard"
+            :address="config?.lxmf_address_hash || ''"
+            :display-name="displayName || ''"
+            @copy-address="copyValue($event, $t('app.lxmf_address'))"
+            @show-qr="openLxmfQr"
+            @seen="markHostedWelcomeSeen"
+        />
         <AndroidStorageChoicePrompt
             ref="androidStorageUpgradePrompt"
             variant="upgrade"
@@ -529,6 +537,7 @@ import CommandPalette from "./CommandPalette.vue";
 import IntegrityWarningModal from "./IntegrityWarningModal.vue";
 import ChangelogModal from "./ChangelogModal.vue";
 import TutorialModal from "./TutorialModal.vue";
+import HostedWelcomeCard from "./onboarding/HostedWelcomeCard.vue";
 import AndroidStorageChoicePrompt from "./AndroidStorageChoicePrompt.vue";
 import PostInstallPromptHost from "./PostInstallPromptHost.vue";
 import AppShellBanners from "./layout/AppShellBanners.vue";
@@ -539,6 +548,7 @@ import AppSidebarClassicNav from "./layout/AppSidebarClassicNav.vue";
 import AppSidebarClassicFooter from "./layout/AppSidebarClassicFooter.vue";
 import KeyboardShortcuts from "../js/KeyboardShortcuts";
 import ElectronUtils from "../js/ElectronUtils";
+import { accountAllows, isHostedInstance, isInstanceAdmin, navEntryAllowed } from "../js/accountRole.js";
 import {
     shouldShowLanBindNoAuthBanner,
     dismissLanBindNoAuthBanner,
@@ -593,6 +603,7 @@ export default {
         IntegrityWarningModal,
         ChangelogModal,
         TutorialModal,
+        HostedWelcomeCard,
         AndroidStorageChoicePrompt,
         PostInstallPromptHost,
         AppShellBanners,
@@ -635,6 +646,10 @@ export default {
             hasCheckedForModals: false,
             skipChangelogAfterTutorial: false,
             lanBindNoAuthBannerDismissed: isLanBindNoAuthBannerDismissed(),
+            // Set once the instance has answered that it runs no relay chat
+            // manager. Stops a five second poll from repeating a question the
+            // instance has already answered.
+            relayChatUnavailable: false,
 
             showLxmfQr: false,
             lxmfQrDataUrl: null,
@@ -687,6 +702,14 @@ export default {
         },
         isPopoutMode() {
             return this.currentPopoutType != null;
+        },
+        isStandaloneRoute() {
+            // A route that renders on its own, with no shell around it: the
+            // single password page, and on a shared instance the accounts
+            // sign-in page and the first-run mode choice. Whoever is looking
+            // at one of these has not established a session yet, so nothing
+            // in the shell (nav rail, identity widget, polling) applies.
+            return this.$route?.meta?.standalone === true;
         },
         sidebarDisplayVersion() {
             const info = this.appInfo || {};
@@ -792,7 +815,7 @@ export default {
             return GlobalState.activeCallTab;
         },
         showWsDisconnectedBanner() {
-            return this.shellRunning && this.wsDisconnected && this.$route?.name !== "auth";
+            return this.shellRunning && this.wsDisconnected && !this.isStandaloneRoute;
         },
         backendOfflineBannerLabel() {
             const duration = this.wsDisconnectedDurationText;
@@ -813,15 +836,24 @@ export default {
             );
         },
         showNetworkDegradedBanner() {
-            return Boolean(GlobalState.networkDegraded) && this.$route?.name !== "auth";
+            return Boolean(GlobalState.networkDegraded) && !this.isStandaloneRoute;
         },
         showNetworkStartingBanner() {
             return (
                 Boolean(GlobalState.networkStarting) &&
                 !GlobalState.networkDegraded &&
                 !GlobalState.networkReady &&
-                this.$route?.name !== "auth"
+                !this.isStandaloneRoute
             );
+        },
+        firstRunGuideSeen() {
+            // Two acknowledgements, one per guide, so dismissing the hosted
+            // welcome card never silences the desktop tour for somebody who
+            // later runs their own install from the same identity.
+            if (isHostedInstance(GlobalState)) {
+                return Boolean(this.appInfo?.hosted_onboarding_welcome_seen);
+            }
+            return Boolean(this.appInfo?.tutorial_seen);
         },
         showLanBindNoAuthBanner() {
             return shouldShowLanBindNoAuthBanner({
@@ -829,8 +861,10 @@ export default {
                 isElectron: ElectronUtils.isElectron(),
                 isAndroid: isMeshChatXAndroid(),
                 authEnabled: GlobalState.authEnabled,
+                authMode: GlobalState.authMode,
                 isLoopbackBind: GlobalState.isLoopbackBind,
                 routeName: this.$route?.name,
+                isStandaloneRoute: this.isStandaloneRoute,
             });
         },
         networkDegradedBannerLabel() {
@@ -986,7 +1020,13 @@ export default {
             if (item.visibleWhen === "rrcEnabled") {
                 return this.rrcEnabled;
             }
-            return true;
+            if (item.visibleWhen === "hostedInstance" && !isHostedInstance(GlobalState)) {
+                return false;
+            }
+            // On a shared instance the account's role decides which pages
+            // exist for this person. Everywhere else this opens, because one
+            // person operating their own node holds no role at all.
+            return navEntryAllowed(item, GlobalState);
         },
         enterSidebarNavEdit() {
             if (this.isSidebarCollapsed || this.isSidebarNavEditing) {
@@ -1070,8 +1110,10 @@ export default {
             this._shellAuthWatchStop = watch(
                 () => [
                     GlobalState.authSessionResolved,
+                    GlobalState.authModeResolved,
                     GlobalState.authEnabled,
                     GlobalState.authenticated,
+                    GlobalState.authMode,
                     this.$route?.name,
                 ],
                 () => this.applyShellAuthState(),
@@ -1082,7 +1124,7 @@ export default {
             if (!GlobalState.authSessionResolved) {
                 return;
             }
-            const needShell = !GlobalState.authEnabled || (GlobalState.authenticated && this.$route.name !== "auth");
+            const needShell = this.computeNeedShell();
             if (needShell && !this.shellRunning) {
                 if (GlobalState.networkStarting && !GlobalState.networkReady && !GlobalState.networkDegraded) {
                     this.waitForMeshThenStartShell();
@@ -1092,6 +1134,38 @@ export default {
             } else if (!needShell && this.shellRunning) {
                 this.stopShell();
             }
+        },
+        computeNeedShell() {
+            // Before the real /api/v1/auth/status answer has come back at
+            // least once, GlobalState.authMode is still its unresolved
+            // default. Starting the shell on that guess is where a shared
+            // instance ends up firing roughly a dozen authenticated requests
+            // at a visitor who has not signed in, since a request already
+            // sent cannot be unsent once the real answer says accounts mode
+            // after all. The wait is one request long and happens whether or
+            // not this build uses accounts, so it costs every mode the same
+            // sub-beat delay rather than singling one out.
+            if (!GlobalState.authModeResolved) {
+                return false;
+            }
+            // A standalone route renders on its own, with no shell around it,
+            // so there is nothing for the shell to wrap and nobody to poll
+            // for. This is one rule covering the accounts gate, the first run
+            // mode choice, and the single password page, instead of three
+            // route names spelled out in two branches. It also stops the
+            // tutorial and the changelog opening over the first run mode
+            // choice, which is what happens when the shell starts behind a
+            // page that is deliberately bare.
+            if (this.isStandaloneRoute) {
+                return false;
+            }
+            // A shared instance signs in by account rather than by the single
+            // password app.auth_enabled guards, so app.auth_enabled stays
+            // false there and cannot be the thing that decides this.
+            if (GlobalState.authMode === "accounts") {
+                return GlobalState.authenticated;
+            }
+            return !GlobalState.authEnabled || GlobalState.authenticated;
         },
         waitForMeshThenStartShell() {
             if (this._meshWaitStarted) {
@@ -1117,6 +1191,9 @@ export default {
                 return;
             }
             this.shellRunning = true;
+            // A fresh shell asks the instance about relay chat again, in case
+            // it came up since the last time it answered that it had none.
+            this.relayChatUnavailable = false;
             WebSocketConnection.connect();
             WebSocketConnection.on("disconnected", this.onWsShellDisconnected);
             WebSocketConnection.on("connected", this.onWsShellConnected);
@@ -1345,7 +1422,7 @@ export default {
             }
         },
         maybeNavigateNetworkRecovery() {
-            if (!GlobalState.networkDegraded || this.$route?.name === "auth") {
+            if (!GlobalState.networkDegraded || this.isStandaloneRoute) {
                 return;
             }
             const loc = recoveryLocationForNetworkError(GlobalState.networkDegradedError);
@@ -1624,9 +1701,33 @@ export default {
         onShowChangelogShell() {
             this.$refs.changelogModal?.show();
         },
+        showFirstRunGuide() {
+            // A hosted visitor operates nothing on this machine, so the eight
+            // step setup tour would walk them through changing a network they
+            // share with everyone else signed in. They get the welcome card
+            // instead. Designed in docs/hosted-onboarding-journey.md.
+            if (isHostedInstance(GlobalState)) {
+                this.$refs.hostedWelcomeCard?.show();
+                return;
+            }
+            this.$refs.tutorialModal?.show();
+        },
+        async markHostedWelcomeSeen() {
+            try {
+                await window.api.post("/api/v1/app/hosted-onboarding/welcome/seen", {});
+                if (this.appInfo) {
+                    this.appInfo.hosted_onboarding_welcome_seen = true;
+                }
+            } catch (e) {
+                // Not worth telling anyone about. The card reappears on the
+                // next sign in, which is a smaller cost than an error toast
+                // over the first thing they ever saw.
+                console.log("Failed to record the welcome card as seen:", e);
+            }
+        },
         onShowTutorialShell() {
             this.skipChangelogAfterTutorial = false;
-            this.$refs.tutorialModal?.show();
+            this.showFirstRunGuide();
         },
         onTutorialFinishedShell() {
             this.skipChangelogAfterTutorial = true;
@@ -1664,7 +1765,7 @@ export default {
             }, 300);
         },
         updateRelayChatUnreadCount() {
-            if (!this.rrcEnabled) {
+            if (!this.rrcEnabled || this.relayChatUnavailable) {
                 GlobalState.relayChatUnreadCount = 0;
                 return;
             }
@@ -1677,6 +1778,17 @@ export default {
                     const hubs = response.data?.hubs || [];
                     GlobalState.relayChatUnreadCount = countRelayMentions(hubs);
                 } catch (e) {
+                    // A 503 here is the instance saying it has no relay chat
+                    // manager at all, which is a fact about this deployment
+                    // and not a request that might work next time. Asking
+                    // again every five seconds only fills the console and the
+                    // access log. Anything else is treated as transient and
+                    // retried on the next tick.
+                    if (e?.response?.status === 503) {
+                        this.relayChatUnavailable = true;
+                        GlobalState.relayChatUnreadCount = 0;
+                        return;
+                    }
                     console.error("Failed to update relay chat mention count", e);
                 }
             }, 300);
@@ -1946,7 +2058,7 @@ export default {
                 // check URL params for modal triggers
                 const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.has("show-guide")) {
-                    this.$refs.tutorialModal.show();
+                    this.showFirstRunGuide();
                     // remove param from URL
                     urlParams.delete("show-guide");
                     const newUrl = window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : "");
@@ -1960,8 +2072,8 @@ export default {
                 } else if (!this.hasCheckedForModals) {
                     // check if we should show tutorial or changelog (only on first load)
                     this.hasCheckedForModals = true;
-                    if (this.appInfo && !this.appInfo.tutorial_seen) {
-                        this.$refs.tutorialModal.show();
+                    if (this.appInfo && !this.firstRunGuideSeen) {
+                        this.showFirstRunGuide();
                     } else if (this.maybeShowAndroidStorageUpgrade()) {
                         // upgrade prompt for existing internal-storage installs
                     } else if (await this.maybeShowPostInstallPrompt()) {
@@ -1969,6 +2081,10 @@ export default {
                     } else if (
                         this.appInfo &&
                         !this.skipChangelogAfterTutorial &&
+                        // What changed in a release is a question for whoever
+                        // upgraded the instance. On a shared one that is not
+                        // the person who just signed in.
+                        (!isHostedInstance(GlobalState) || isInstanceAdmin(GlobalState)) &&
                         this.appInfo.changelog_seen_version !== "999.999.999" &&
                         this.appInfo.changelog_seen_version !== this.appInfo.version
                     ) {
@@ -2012,6 +2128,14 @@ export default {
             this.getConfig();
         },
         async getBlockedDestinations() {
+            // Banishment is contributor and above, because it blackholes an
+            // identity on the shared Reticulum instance. Asking for the list
+            // as an ordinary account is a 403 the UI would then have to
+            // explain, so it is not asked for.
+            if (!accountAllows(GlobalState, "contributor")) {
+                GlobalState.blockedDestinations = [];
+                return;
+            }
             try {
                 const response = await window.api.get("/api/v1/blocked-destinations");
                 GlobalState.blockedDestinations = response.data.blocked_destinations || [];

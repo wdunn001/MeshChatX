@@ -19,13 +19,15 @@
                 <span class="settings-nav__label">{{ $t(tab.labelKey) }}</span>
                 <span v-if="searchActive" class="settings-nav__count">{{ matchCount(tab.id) }}</span>
             </span>
-            <span class="settings-nav__description">{{ $t(tab.descriptionKey) }}</span>
+            <span class="settings-nav__description">{{ $t(descriptionKeyFor(tab)) }}</span>
         </button>
     </nav>
 </template>
 
 <script>
 import { SETTINGS_TABS } from "../../js/settings/settingsTabs.js";
+import GlobalState from "../../js/GlobalState.js";
+import { settingsSectionAllowed } from "../../js/accountRole.js";
 
 export default {
     name: "SettingsNav",
@@ -38,19 +40,33 @@ export default {
             type: Object,
             default: null,
         },
+        // The tabs worth showing. Passed in because a tab whose every section
+        // is unavailable to this account is an empty page, not a choice.
+        visibleTabs: {
+            type: Array,
+            default: null,
+        },
     },
     emits: ["select"],
-    data() {
-        return {
-            tabs: SETTINGS_TABS,
-        };
-    },
     computed: {
+        tabs() {
+            return this.visibleTabs || SETTINGS_TABS;
+        },
         searchActive() {
             return this.matchCounts != null;
         },
     },
     methods: {
+        descriptionKeyFor(tab) {
+            // A tab keeps its full subtitle while every section it names is
+            // reachable. Once the instance-owned ones are hidden, the shorter
+            // subtitle describes what is actually on the page.
+            if (!tab.personalDescriptionKey) {
+                return tab.descriptionKey;
+            }
+            const hidden = tab.sections.some((key) => !settingsSectionAllowed(key, GlobalState));
+            return hidden ? tab.personalDescriptionKey : tab.descriptionKey;
+        },
         matchCount(tabId) {
             if (!this.matchCounts) return 0;
             const n = this.matchCounts[tabId];

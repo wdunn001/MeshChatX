@@ -37,6 +37,22 @@ async function e2ePost(request, url, data) {
     return request.post(url, { headers, data });
 }
 
+/**
+ * PATCH with session cookie and CSRF header, same shape as e2ePost.
+ * @param {import('@playwright/test').APIRequestContext} request
+ * @param {string} url absolute URL
+ * @param {object} [data] JSON body
+ */
+async function e2ePatch(request, url, data) {
+    const origin = new URL(url).origin;
+    const token = await ensureE2eCsrf(request, origin);
+    const headers = { [CSRF_HEADER]: token };
+    if (data === undefined) {
+        return request.patch(url, { headers });
+    }
+    return request.patch(url, { headers, data });
+}
+
 function buildE2eLxmfRow({ peerHash, localHash, index, total, inbound }) {
     const hash = crypto.randomBytes(16).toString("hex");
     const baseTs = Math.floor(Date.now() / 1000) - total;
@@ -188,6 +204,7 @@ module.exports = {
     PALETTE_PLACEHOLDER,
     dismissMapOnboardingTooltip,
     e2ePost,
+    e2ePatch,
     ensureE2eCsrf,
     openCommandPalette,
     prepareE2eSession,

@@ -38,6 +38,21 @@ describe("shouldShowLanBindNoAuthBanner", () => {
         expect(shouldShowLanBindNoAuthBanner({ ...lanNoAuth, routeName: "auth" })).toBe(false);
     });
 
+    it("hides on a shared instance, where accounts are the password", () => {
+        expect(shouldShowLanBindNoAuthBanner({ ...lanNoAuth, authMode: "accounts" })).toBe(false);
+    });
+
+    it("still shows in the modes that have no gate of their own", () => {
+        expect(shouldShowLanBindNoAuthBanner({ ...lanNoAuth, authMode: "open" })).toBe(true);
+        expect(shouldShowLanBindNoAuthBanner({ ...lanNoAuth, authMode: null })).toBe(true);
+    });
+
+    it("hides on a standalone route, such as a multi-user instance's accounts gate", () => {
+        expect(
+            shouldShowLanBindNoAuthBanner({ ...lanNoAuth, routeName: "accounts", isStandaloneRoute: true })
+        ).toBe(false);
+    });
+
     it("stays hidden after dismiss is persisted", () => {
         dismissLanBindNoAuthBanner();
         expect(isLanBindNoAuthBannerDismissed()).toBe(true);

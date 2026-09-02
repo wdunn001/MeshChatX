@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: 0BSD
+#
+# This repo has core.autocrlf=true as a common Windows dev default and,
+# until now, no .gitattributes at all, which lets git "helpfully" convert
+# LF to CRLF on checkout for anything it does not detect as binary by
+# content sniffing. WASM files (magic bytes start with a NUL) are caught by
+# that sniffing and survive; the JS glue files that ship alongside them are
+# plain ASCII and are NOT, so they silently get CRLF-mangled on a Windows
+# checkout, which breaks their SHA-384 SRI hash against integrity.json (the
+# browser then refuses to load them as "possible tampering", correctly, on
+# an artifact that was actually just checkout-mangled). Observed exactly
+# this happening to already-committed vendor JS under
+# meshchatx/src/frontend/public/assets/js/codec2-emscripten/ and
+# meshchatx/src/frontend/public/rnode-flasher/js/ while working on this
+# change; scoped here to the new lxmf-stamper-wasm vendor files rather than
+# auditing every vendored asset in the repo.
+
+meshchatx/src/frontend/public/vendor/lxmf-stamper-wasm/*.wasm binary
+meshchatx/src/frontend/public/vendor/lxmf-stamper-wasm/*.js -text

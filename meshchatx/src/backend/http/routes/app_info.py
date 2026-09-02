@@ -513,6 +513,14 @@ def register_app_info_routes(routes, app):
                     "user_guidance": _safe_user_guidance(),
                     "tutorial_seen": _safe_config_get("tutorial_seen", "false")
                     == "true",
+                    # The hosted welcome card stands in for the desktop tour on
+                    # a shared instance, and is acknowledged separately so that
+                    # neither one silences the other.
+                    "hosted_onboarding_welcome_seen": _safe_config_get(
+                        "hosted_onboarding_welcome_seen",
+                        "false",
+                    )
+                    == "true",
                     "changelog_seen_version": _safe_config_get(
                         "changelog_seen_version",
                         "0.0.0",
@@ -591,6 +599,70 @@ def register_app_info_routes(routes, app):
     async def app_tutorial_seen(request):
         app.config.set("tutorial_seen", True)
         return web.json_response({"message": "Tutorial marked as seen"})
+
+    # the browser-local preferences a person carries between sessions
+    @routes.get("/api/v1/app/ui-profile")
+    async def app_ui_profile_get(request):
+        """Return the browser preferences stored for this identity.
+
+        A shared terminal is a borrowed browser. Anything the frontend keeps in
+        localStorage belongs to the machine, not to the person, so on a hosted
+        instance one person's collapsed sidebar, dismissed prompt or translate
+        language is left behind for whoever signs in next. Holding them here
+        makes them the person's own, and lets the browser be cleared on the way
+        in and on the way out.
+
+        Stored as one JSON document under a single config key. The alternative,
+        a config key per preference, would mean a schema conversation every time
+        the frontend adds a toggle.
+        """
+        raw = app.config.get("ui_profile", None)
+        if not raw:
+            return web.json_response({"profile": {}})
+        try:
+            profile = json.loads(raw)
+        except (TypeError, ValueError):
+            # A document that cannot be parsed is not worth an error to
+            # somebody signing in. They get defaults and the next save
+            # replaces it.
+            return web.json_response({"profile": {}})
+        if not isinstance(profile, dict):
+            return web.json_response({"profile": {}})
+        return web.json_response({"profile": profile})
+
+    @routes.put("/api/v1/app/ui-profile")
+    async def app_ui_profile_put(request):
+        try:
+            data = await request.json()
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+            return web.json_response({"error": "Invalid request"}, status=400)
+        profile = data.get("profile") if isinstance(data, dict) else None
+        if not isinstance(profile, dict):
+            return web.json_response(
+                {"error": "profile must be an object"},
+                status=400,
+            )
+        encoded = json.dumps(profile)
+        # A cap, because this is written from the browser and lands in the
+        # identity's own database. Big enough for every preference plus a
+        # conversation's worth of drafts, small enough that nobody can park a
+        # file here.
+        if len(encoded) > 256 * 1024:
+            return web.json_response(
+                {"error": "profile is too large"},
+                status=413,
+            )
+        app.config.set("ui_profile", encoded)
+        return web.json_response({"message": "Saved"})
+
+    # mark the hosted welcome card as seen
+    @routes.post("/api/v1/app/hosted-onboarding/welcome/seen")
+    async def app_hosted_welcome_seen(request):
+        # Per identity, like tutorial_seen beside it, so a shared browser does
+        # not carry one account's acknowledgement onto the next account that
+        # signs in. That is what localStorage would have done.
+        app.config.set("hosted_onboarding_welcome_seen", True)
+        return web.json_response({"message": "Welcome card marked as seen"})
 
     @routes.post("/api/v1/setup/storage-migration")
     async def setup_storage_migration(request):

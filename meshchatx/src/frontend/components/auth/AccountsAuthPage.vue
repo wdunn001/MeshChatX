@@ -1,0 +1,243 @@
+<!-- SPDX-License-Identifier: 0BSD -->
+
+<template>
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="w-full max-w-sm space-y-6">
+            <div class="text-center space-y-1">
+                <img class="w-12 h-12 mx-auto mb-1 object-contain" :src="logoUrl" alt="" />
+                <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $t("app.name") }}</div>
+                <p class="text-sm text-gray-600 dark:text-gray-400">{{ $t("app.tagline") }}</p>
+            </div>
+
+            <div class="text-center space-y-1">
+                <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                    {{ mode === "register" ? "Create an account" : "Sign in" }}
+                </h1>
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    {{
+                        mode === "register"
+                            ? "You get your own address on the mesh, and your messages stay yours."
+                            : "Sign in to reach the mesh through this instance."
+                    }}
+                </p>
+            </div>
+
+            <form class="space-y-3" @submit.prevent="submit">
+                <div class="space-y-1">
+                    <label class="text-sm text-gray-700 dark:text-gray-300">Username</label>
+                    <input
+                        v-model="username"
+                        type="text"
+                        class="input-field"
+                        autocomplete="username"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        :disabled="busy"
+                    />
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-sm text-gray-700 dark:text-gray-300">Password</label>
+                    <input
+                        v-model="password"
+                        type="password"
+                        class="input-field"
+                        :autocomplete="mode === 'register' ? 'new-password' : 'current-password'"
+                        :disabled="busy"
+                    />
+                    <p v-if="mode === 'register'" class="text-xs text-gray-500 dark:text-gray-400">
+                        At least 8 characters. There is no way to recover it, so pick something you will remember.
+                    </p>
+                </div>
+
+                <div v-if="stampAuthEnabled" class="space-y-1" data-testid="stamp-status">
+                    <div
+                        v-if="solving || stampSolved"
+                        class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"
+                    >
+                        <div
+                            class="h-full rounded-full"
+                            :class="solving ? 'w-1/3 animate-pulse bg-blue-500' : 'w-full bg-emerald-500'"
+                        ></div>
+                    </div>
+                    <p v-if="solving" class="text-xs text-gray-500 dark:text-gray-400" role="status">
+                        {{ $t("accounts.stamp_pending") }}
+                        {{ $t("accounts.stamp_progress", solveProgressParams) }}
+                    </p>
+                    <p
+                        v-else-if="stampSolved"
+                        class="text-xs text-emerald-600 dark:text-emerald-400"
+                        role="status"
+                        data-testid="stamp-done"
+                    >
+                        {{ $t("accounts.stamp_done", solveProgressParams) }}
+                    </p>
+                    <p v-else class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ $t("accounts.stamp_notice") }}
+                    </p>
+                </div>
+
+                <p v-if="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</p>
+
+                <button type="submit" class="btn btn-primary w-full" :disabled="busy">
+                    {{ busy ? "Working..." : mode === "register" ? "Create account" : "Sign in" }}
+                </button>
+            </form>
+
+            <div v-if="registrationOpen" class="text-center">
+                <button class="text-sm text-blue-600 dark:text-blue-400" @click="toggleMode">
+                    {{ mode === "register" ? "I already have an account" : "I need an account" }}
+                </button>
+            </div>
+            <p v-else-if="mode === 'login'" class="text-center text-xs text-gray-500 dark:text-gray-400">
+                Sign ups are closed on this instance. Ask whoever runs it for an account.
+            </p>
+        </div>
+    </div>
+</template>
+
+<script>
+import { solveStampChallenge } from "../../js/stampChallenge.js";
+import { clearBrowserState } from "../../js/uiProfile.js";
+import logoUrl from "../../assets/images/logo.png";
+
+export default {
+    name: "AccountsAuthPage",
+    data() {
+        return {
+            logoUrl,
+            mode: "login",
+            username: "",
+            password: "",
+            error: "",
+            busy: false,
+            registrationOpen: true,
+            // Registration is deliberately open to anyone who reaches this
+            // instance, so the stamp is the main defence against a bot
+            // scripting sign up, and a second layer against brute-forcing
+            // sign in. Whether it applies at all comes from the server: this
+            // mirrors AuthPage.vue, which reads the same stamp_auth_enabled
+            // flag off /api/v1/auth/status rather than a flag invented for
+            // this page.
+            stampAuthEnabled: false,
+            solving: false,
+            // Held after a solve so the work stays on screen. A desktop
+            // browser finishes a cost 17 stamp in well under a second, which
+            // is fast enough that the progress row above appears and vanishes
+            // between frames. Somebody who was told this instance asks for
+            // proof of work should be able to see that it happened.
+            stampSolved: false,
+            solveProgress: { attempts: 0, elapsedMs: 0 },
+        };
+    },
+    computed: {
+        solveProgressParams() {
+            return {
+                attempts: String(this.solveProgress.attempts),
+                seconds: (this.solveProgress.elapsedMs / 1000).toFixed(1),
+            };
+        },
+    },
+    async mounted() {
+        await this.loadStatus();
+    },
+    methods: {
+        async loadStatus() {
+            try {
+                const [multiuserResponse, authResponse] = await Promise.all([
+                    window.api.get("/api/v1/multiuser/status"),
+                    // Read only, and not fatal to sign in if it fails: the
+                    // stamp step just stays off, same as when stamp auth is
+                    // not configured at all.
+                    window.api.get("/api/v1/auth/status").catch(() => null),
+                ]);
+                const status = multiuserResponse.data || {};
+                this.registrationOpen = status.registration_open !== false;
+                // Nobody has signed up yet, so the first person through is
+                // making the admin account rather than joining.
+                if (status.accounts === 0 && this.registrationOpen) {
+                    this.mode = "register";
+                }
+                if (status.signed_in) {
+                    this.$router.push("/");
+                }
+                this.stampAuthEnabled = authResponse?.data?.stamp_auth_enabled === true;
+            } catch (e) {
+                // A status that cannot be read should not block sign in.
+            }
+        },
+        toggleMode() {
+            this.mode = this.mode === "register" ? "login" : "register";
+            this.error = "";
+            this.stampSolved = false;
+        },
+        // Fetches a fresh challenge and solves it client side (in wasm),
+        // reporting real progress (attempts tried, time elapsed) rather
+        // than a spinner, since solving can visibly take a few seconds on
+        // a phone. Returns the stamp_proof body field, or null with
+        // this.error already set.
+        async solveStamp() {
+            this.solving = true;
+            this.stampSolved = false;
+            this.solveProgress = { attempts: 0, elapsedMs: 0 };
+            try {
+                const proof = await solveStampChallenge("/api/v1/auth/stamp/challenge", (progress) => {
+                    this.solveProgress = progress;
+                });
+                this.stampSolved = true;
+                return proof;
+            } catch (e) {
+                this.error = this.$t("accounts.stamp_unavailable");
+                return null;
+            } finally {
+                this.solving = false;
+            }
+        },
+        async submit() {
+            this.error = "";
+            if (!this.username || !this.password) {
+                this.error = "Enter a username and a password";
+                return;
+            }
+            this.busy = true;
+
+            let stampProof = null;
+            if (this.stampAuthEnabled) {
+                stampProof = await this.solveStamp();
+                if (!stampProof) {
+                    this.busy = false;
+                    return;
+                }
+            }
+
+            const path = this.mode === "register" ? "/api/v1/multiuser/register" : "/api/v1/multiuser/login";
+            const body = { username: this.username, password: this.password };
+            if (stampProof) {
+                body.stamp_proof = stampProof;
+            }
+            try {
+                await window.api.post(path, body);
+                // This browser may be a borrowed one. Whatever the last person
+                // left in localStorage is theirs, not this person's, so it goes
+                // before the shell has a chance to read any of it. Their own
+                // values come back from the server once the shell starts.
+                clearBrowserState();
+                // A fresh sign in changes which identity the whole app is
+                // reading, so reload rather than navigate, to drop any state
+                // belonging to whoever was here before.
+                window.location.href = "/";
+            } catch (e) {
+                const detail = e?.response?.data?.error;
+                this.error = detail || "That did not work. Try again.";
+                this.busy = false;
+                // The server only marks a solution spent once it accepts it
+                // as valid, whether or not the request goes on to succeed for
+                // some other reason (a taken username, for one). Reusing it
+                // on a retry would be rejected as a replay; a fresh submit
+                // solves a new challenge automatically, so nothing extra is
+                // needed here beyond letting the next submit try again.
+            }
+        },
+    },
+};
+</script>

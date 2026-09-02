@@ -201,7 +201,7 @@ _SERVER_BIND_STATUS_SCHEMA: dict = {
 
 _DEMO_PUBLIC_STATUS_FIELDS: dict = {
     "demo_mode": {"type": "boolean"},
-    "altcha_enabled": {"type": "boolean"},
+    "stamp_auth_enabled": {"type": "boolean"},
     "auth_page_hint": {"type": ["string", "null"]},
 }
 
@@ -325,6 +325,23 @@ SELF_TEST_SCHEMA: dict = {
     "additionalProperties": False,
 }
 
+UI_PROFILE_ENVELOPE_SCHEMA = {
+    "type": "object",
+    "required": ["profile"],
+    "properties": {
+        # The browser-local preferences kept per identity, so a shared terminal
+        # can be cleared between people. Values are the raw localStorage
+        # strings, so the shape stays open on purpose: the frontend registry in
+        # meshchatx/src/frontend/js/uiProfile.js decides which keys are known,
+        # and it refuses anything it does not recognise on the way back in.
+        "profile": {
+            "type": "object",
+            "additionalProperties": {"type": "string"},
+        },
+    },
+}
+
+
 API_V1_APP_INFO_ENVELOPE_SCHEMA: dict = {
     "type": "object",
     "required": ["app_info"],
@@ -346,23 +363,21 @@ AUTH_STATUS_SCHEMA: dict = {
             "enum": ["http", "starting", "rns", "identity", "ready", "failed"],
         },
         "error": {"type": "string"},
+        "auth_mode": {"type": ["string", "null"]},
+        "auth_modes_available": {"type": "array", "items": {"type": "string"}},
         **_DEMO_PUBLIC_STATUS_FIELDS,
     },
     "additionalProperties": False,
 }
 
-ALTCHA_CHALLENGE_SCHEMA: dict = {
+STAMP_CHALLENGE_SCHEMA: dict = {
     "type": "object",
-    "required": ["parameters", "signature"],
+    "required": ["material", "cost", "expand_rounds", "expires_at", "signature"],
     "properties": {
-        "parameters": {
-            "type": "object",
-            "required": ["algorithm"],
-            "properties": {
-                "algorithm": {"type": "string"},
-            },
-            "additionalProperties": True,
-        },
+        "material": {"type": "string"},
+        "cost": {"type": "integer"},
+        "expand_rounds": {"type": "integer"},
+        "expires_at": {"type": "integer"},
         "signature": {"type": "string"},
     },
     "additionalProperties": True,

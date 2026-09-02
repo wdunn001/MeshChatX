@@ -2144,7 +2144,9 @@
             "maintenance": "维护",
             "maintenance_desc": "清理、导出、导入和源",
             "plugins": "插件",
-            "plugins_desc": "安装和管理 MeshChatX 插件"
+            "plugins_desc": "安装和管理 MeshChatX 插件",
+            "network_desc_personal": "网络可视化、页面抓取和通话",
+            "privacy_desc_personal": "你自己的数据"
         },
         "nav_label": "设置分组",
         "search_label": "搜索设置",
@@ -2464,7 +2466,12 @@
         "tab_content_mismatch": "此标签页不同步，正在重新加载",
         "tab_restore_failed": "无法恢复此标签页的页面",
         "open_node_failed": "无法打开 NomadNet 节点",
-        "hide_source": "隐藏源码"
+        "hide_source": "隐藏源码",
+        "name_not_found": "没有解析器认识这个名称：",
+        "name_ambiguous": "有不止一个身份注册了这个名称，因此未使用它。请改用目标哈希浏览：",
+        "name_resolver_unreachable": "无法连接到解析器来查询：",
+        "name_resolution_off": "名称解析已关闭。请在设置、NomadNet 中添加解析器，以便按名称浏览：",
+        "load_phase_resolving_name": "正在通过解析器查询该名称"
     },
     "forwarder": {
         "title": "LXMF 转发器",
@@ -4344,9 +4351,25 @@
         "set_password": "设置密码",
         "login": "登录",
         "passwords_mismatch": "两次输入的密码不一致",
-        "altcha_required": "请先完成验证挑战",
+        "stamp_required": "请先完成验证挑战",
+        "stamp_solving": "Solving proof of work...",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
         "status_check_failed": "无法检查身份验证状态",
         "failed": "身份验证失败"
+    },
+    "accounts": {
+        "stamp_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
+        "signed_in_as": "当前登录身份",
+        "sign_out": "退出登录",
+        "signing_out": "正在退出",
+        "sign_out_failed": "退出请求没有送达服务器。此浏览器仍已清除。",
+        "stamp_notice": "本实例会先要求你的浏览器完成一小段工作量证明。",
+        "stamp_done": "工作量证明已完成，用时 {seconds} 秒，尝试 {attempts} 次。"
     },
     "post_install": {
         "windows_screen_security_title": "启用 Windows 屏幕安全？",
@@ -4450,5 +4473,45 @@
         "delete": "删除",
         "delete_confirm": "从同步文件夹删除“{name}”？",
         "delete_done": "已删除"
+    },
+    "hosted_welcome": {
+        "address_body": "拥有这个地址的人都能联系到你。它属于你。",
+        "address_label": "你的地址",
+        "close": "关闭",
+        "copy_address": "复制地址",
+        "find_body": "要联系某个人，你需要对方的地址。分享你的地址，或者看看还有谁在这里。",
+        "name_body": "当你的地址出现在网络上时，别人看到的就是这个名称。",
+        "name_label": "你显示的名称",
+        "open_announces": "看看还有谁在这里",
+        "show_qr": "显示二维码",
+        "title": "你已接入 mesh 网络"
+    },
+    "accounts_admin": {
+        "description": "所有可以登录本实例的人。",
+        "disabled": "已停用",
+        "empty": "还没有账户。",
+        "enabled": "已启用",
+        "identity": "身份",
+        "last_login": "上次登录",
+        "load_failed": "无法加载账户列表",
+        "never": "从未",
+        "registration_closed_help": "没有新用户可以从登录页创建账户。",
+        "registration_open_help": "任何能访问本实例的人都可以创建账户。",
+        "registration_title": "注册",
+        "registration_toggle": "允许任何人创建账户",
+        "remove": "移除",
+        "remove_confirm": "移除 {username}？其身份和消息仍会保留在这台机器上。",
+        "removed": "账户已移除",
+        "role": "角色",
+        "role_admin": "管理员",
+        "role_contributor": "贡献者",
+        "role_help": "用户可以使用自己的消息和 mesh 网络。贡献者还可以向共享节点发布内容并运行机器人。管理员负责运维本实例。",
+        "role_user": "用户",
+        "status": "状态",
+        "title": "账户",
+        "update_failed": "该更改被拒绝",
+        "updated": "账户已更新",
+        "username": "用户名",
+        "you": "你"
     }
 }

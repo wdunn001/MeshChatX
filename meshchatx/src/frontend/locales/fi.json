@@ -2069,7 +2069,9 @@
             "maintenance": "Ylläpito",
             "maintenance_desc": "Siivous, vienti, tuonti ja lähteet",
             "plugins": "Laajennukset",
-            "plugins_desc": "Asenna ja hallitse MeshChatX-laajennuksia"
+            "plugins_desc": "Asenna ja hallitse MeshChatX-laajennuksia",
+            "network_desc_personal": "Verkkovisualisointi, sivujen indeksointi ja puhelut",
+            "privacy_desc_personal": "Omat tietosi"
         },
         "nav_label": "Asetusosiot",
         "search_label": "Hae asetuksista",
@@ -2464,7 +2466,12 @@
         "tab_content_mismatch": "Tämä välilehti oli epäsynkassa ja ladataan uudelleen",
         "tab_restore_failed": "Välilehden sivua ei voitu palauttaa",
         "open_node_failed": "NomadNet-solmua ei voitu avata",
-        "hide_source": "Piilota lähdekoodi"
+        "hide_source": "Piilota lähdekoodi",
+        "name_not_found": "Yksikaan selvittaja ei tunne tata nimea: ",
+        "name_ambiguous": "Useampi kuin yksi identiteetti on rekisteroinyt taman nimen, joten sita ei kaytetty. Selaa sen sijaan kohdetiivisteella: ",
+        "name_resolver_unreachable": "Selvittajaan ei saatu yhteytta haettaessa: ",
+        "name_resolution_off": "Nimenselvitys on pois paalta. Lisaa selvittaja kohdassa Asetukset, NomadNet, jotta voit selata nimella: ",
+        "load_phase_resolving_name": "Nimea haetaan selvittajalta"
     },
     "forwarder": {
         "title": "LXMF-välittäjä",
@@ -4344,9 +4351,25 @@
         "set_password": "Aseta salasana",
         "login": "Kirjaudu",
         "passwords_mismatch": "Salasanat eivät täsmää",
-        "altcha_required": "Suorita ensin vahvistustehtävä",
+        "stamp_required": "Suorita ensin vahvistustehtävä",
+        "stamp_solving": "Solving proof of work...",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
         "status_check_failed": "Tunnistautumistilan tarkistus epäonnistui",
         "failed": "Tunnistautuminen epäonnistui"
+    },
+    "accounts": {
+        "stamp_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
+        "signed_in_as": "Kirjautuneena nimella",
+        "sign_out": "Kirjaudu ulos",
+        "signing_out": "Kirjaudutaan ulos",
+        "sign_out_failed": "Uloskirjautuminen ei tavoittanut palvelinta. Tama selain tyhjennettiin silti.",
+        "stamp_notice": "Tama instanssi pyytaa selaimeltasi ensin pienen tyotodisteen.",
+        "stamp_done": "Tyotodiste valmis ajassa {seconds}s, {attempts} yritysta."
     },
     "post_install": {
         "windows_screen_security_title": "Otetaanko Windowsin näytön suojaus käyttöön?",
@@ -4450,5 +4473,45 @@
         "delete": "Poista",
         "delete_confirm": "Poistetaanko \"{name}\" synkronointikansiosta?",
         "delete_done": "Poistettu"
+    },
+    "hosted_welcome": {
+        "address_body": "Kuka tahansa, jolla on tama osoite, tavoittaa sinut. Se on sinun.",
+        "address_label": "Osoitteesi",
+        "close": "Sulje",
+        "copy_address": "Kopioi osoite",
+        "find_body": "Jotta tavoitat jonkun, tarvitset hanen osoitteensa. Jaa omasi, tai katso ketka muut ovat taalla.",
+        "name_body": "Taman nimen muut nakevat, kun osoitteesi ilmestyy verkkoon.",
+        "name_label": "Nakyva nimesi",
+        "open_announces": "Katso ketka muut ovat taalla",
+        "show_qr": "Nayta QR-koodi",
+        "title": "Olet verkossa"
+    },
+    "accounts_admin": {
+        "description": "Kaikki, jotka voivat kirjautua tahan instanssiin.",
+        "disabled": "Poistettu kaytosta",
+        "empty": "Ei viela tileja.",
+        "enabled": "Kaytossa",
+        "identity": "Identiteetti",
+        "last_login": "Viimeksi kirjautunut",
+        "load_failed": "Tililistaa ei voitu ladata",
+        "never": "Ei koskaan",
+        "registration_closed_help": "Kukaan uusi ei voi luoda tilia kirjautumissivulta.",
+        "registration_open_help": "Kuka tahansa, joka tavoittaa taman instanssin, voi luoda tilin.",
+        "registration_title": "Rekisteroityminen",
+        "registration_toggle": "Salli kenen tahansa luoda tili",
+        "remove": "Poista",
+        "remove_confirm": "Poistetaanko {username}? Identiteetti ja viestit jaavat tahan koneeseen.",
+        "removed": "Tili poistettu",
+        "role": "Rooli",
+        "role_admin": "Yllapitaja",
+        "role_contributor": "Avustaja",
+        "role_help": "Kayttaja paasee omiin viesteihinsa ja verkkoon. Avustaja julkaisee lisaksi jaettuun solmuun ja ajaa botteja. Yllapitaja hallitsee instanssia.",
+        "role_user": "Kayttaja",
+        "status": "Tila",
+        "title": "Tilit",
+        "update_failed": "Muutos hylattiin",
+        "updated": "Tili paivitetty",
+        "username": "Kayttajatunnus",
+        "you": "Sina"
     }
 }

@@ -22,6 +22,12 @@ module.exports = defineConfig({
         trace: "on-first-retry",
         screenshot: "only-on-failure",
     },
+    // The multi-user entry gate suite (tests/e2e/multiuser) and the opt-in
+    // live smoke spec (tests/e2e/live) run against different backends via
+    // their own configs (playwright.multiuser.config.js,
+    // playwright.live.config.js) and must not be picked up here just
+    // because they live under the same testDir.
+    testIgnore: ["multiuser/**", "live/**"],
     projects: [
         {
             name: "chromium",

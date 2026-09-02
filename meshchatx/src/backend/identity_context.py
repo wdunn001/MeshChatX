@@ -17,6 +17,7 @@ from meshchatx.src.backend.config_manager import ConfigManager
 from meshchatx.src.backend.database import Database, merge_health_issues
 from meshchatx.src.backend.docs_manager import DocsManager
 from meshchatx.src.backend.forwarding_manager import ForwardingManager
+from meshchatx.src.backend.instance_defaults import seed_identity_config
 from meshchatx.src.backend.integrity_manager import (
     CriticalIntegrityError,
     IntegrityManager,
@@ -212,6 +213,19 @@ class IdentityContext:
 
         # 3. Initialize Config and core managers
         self.config = ConfigManager(self.database)
+
+        # An instance that runs its own resolvers hands them to every identity
+        # it creates. Only keys this identity has never written are touched, so
+        # turning one of them off here stays off.
+        seeded = seed_identity_config(self.config, self.app.storage_dir)
+        if seeded:
+            RNS.log(
+                "Seeded instance defaults for "
+                + self.identity_hash
+                + ": "
+                + ", ".join(seeded),
+                RNS.LOG_DEBUG,
+            )
 
         if (
             hasattr(self.app, "gitea_base_url_override")
@@ -432,6 +446,33 @@ class IdentityContext:
         self.start_background_threads()
 
         print(f"Identity Context for {self.identity_hash} core is now running.")
+
+    def ensure_deferred_services_started(self):
+        """Start this context's deferred services once, in the background.
+
+        The startup path only ever runs deferred setup for current_context,
+        which is the single identity a one person install has. On a shared
+        instance every signed-in person gets their own context, built by the
+        multi-user middleware, and nothing there ever finished it for them.
+        Relay chat was the visible symptom: /api/v1/rrc/hubs answers 503
+        because app.rrc_manager resolves through the caller's context and that
+        manager was never built. Bots and the tool manager were missing the
+        same way.
+
+        Safe to call on every request. It returns at once when the run has
+        already finished or another caller is inside it, and the work itself
+        happens off the request thread because connecting hubs blocks.
+        """
+        if not self.running:
+            return
+        with self._deferred_setup_lock:
+            if self._deferred_setup_done or self._deferred_setup_in_progress:
+                return
+        threading.Thread(
+            target=self.setup_deferred_services,
+            name="deferred-" + self.identity_hash[:8],
+            daemon=True,
+        ).start()
 
     def setup_deferred_services(self):
         """Finish non-critical managers after network_ready.

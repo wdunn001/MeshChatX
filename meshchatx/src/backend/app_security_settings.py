@@ -68,6 +68,26 @@ def save_app_security_settings(
     return current
 
 
+def update_app_security_raw(
+    storage_dir: str,
+    updates: dict[str, Any],
+) -> dict[str, Any]:
+    """Merge arbitrary keys into the settings file and write it atomically.
+
+    save_app_security_settings above only persists the two allowlist keys it
+    validates, and drops anything else without saying so. Callers holding a
+    key it does not know about need this instead, which validates nothing and
+    stores what it is given.
+    """
+    path = _settings_path(storage_dir)
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with _LOCK:
+        current = load_app_security_settings(storage_dir)
+        current.update(updates)
+        atomic_write_text(path, json.dumps(current, indent=2) + "\n")
+    return current
+
+
 def get_web_ui_ip_allowlist(storage_dir: str) -> str:
     return normalize_allowlist_text(
         load_app_security_settings(storage_dir).get("web_ui_ip_allowlist"),

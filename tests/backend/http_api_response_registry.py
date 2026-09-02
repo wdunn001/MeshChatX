@@ -7,11 +7,12 @@ from __future__ import annotations
 import re
 
 from tests.backend.api_json_contract_schemas import (
-    ALTCHA_CHALLENGE_SCHEMA,
     API_V1_APP_INFO_ENVELOPE_SCHEMA,
+    UI_PROFILE_ENVELOPE_SCHEMA,
     API_V1_STATUS_SCHEMA,
     AUTH_STATUS_SCHEMA,
     SELF_TEST_SCHEMA,
+    STAMP_CHALLENGE_SCHEMA,
     TELEPHONE_CONTACT_CHECK_SCHEMA,
     TELEPHONE_CONTACTS_LIST_SCHEMA,
     TELEPHONE_RINGTONE_STATUS_SCHEMA,
@@ -145,12 +146,13 @@ HTTP_JSON_GET_CONTRACTS: tuple[HttpJsonContract, ...] = (
     HttpJsonContract("GET", "/api/v1/app/info", API_V1_APP_INFO_ENVELOPE_SCHEMA),
     HttpJsonContract("GET", "/api/v1/app/sessions", ACTIVE_SESSIONS_SCHEMA),
     HttpJsonContract("GET", "/api/v1/app/changelog", CHANGELOG_SCHEMA),
+    HttpJsonContract("GET", "/api/v1/app/ui-profile", UI_PROFILE_ENVELOPE_SCHEMA),
     HttpJsonContract("GET", "/api/v1/auth/status", AUTH_STATUS_SCHEMA),
     HttpJsonContract("GET", "/api/v1/auth/csrf", CSRF_ENVELOPE_SCHEMA),
     HttpJsonContract(
         "GET",
-        "/api/v1/auth/altcha/challenge",
-        ALTCHA_CHALLENGE_SCHEMA,
+        "/api/v1/auth/stamp/challenge",
+        STAMP_CHALLENGE_SCHEMA,
         allow_statuses=(200, 404, 503),
         alt_schemas=(ERROR_ENVELOPE_SCHEMA,),
     ),
@@ -682,6 +684,14 @@ HTTP_JSON_GET_CONTRACT_EXCLUDED: tuple[str, ...] = (
     "/api/v1/telephone/voicemails/{id}/audio",
     "/api/v1/lxmf/propagation-node/sync",
     "/api/v1/lxmf/propagation-node/stop-sync",
+    # Registered only when the instance runs in accounts mode, which the
+    # contract app in this file does not. Their JSON shapes are pinned against
+    # a real multi-user app instead, in
+    # tests/backend/test_multiuser_json_contracts.py.
+    "/api/v1/multiuser/status",
+    "/api/v1/multiuser/me",
+    "/api/v1/multiuser/accounts",
+    "/api/v1/multiuser/registration",
 )
 
 _HTTP_JSON_GET_EXCLUDED_PATTERNS: tuple[re.Pattern[str], ...] = (

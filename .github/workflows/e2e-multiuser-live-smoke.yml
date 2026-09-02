@@ -1,0 +1,49 @@
+# Manual, opt-in, READ-ONLY smoke check against the real hosted instance at
+# msg.quasarke.net. workflow_dispatch only: this never runs on push or pull
+# requests, so it never fires on its own. The spec itself
+# (tests/e2e/live/live-multiuser-smoke.spec.js) also refuses to run any
+# assertion unless E2E_LIVE_SMOKE=1 is set, which this workflow sets
+# explicitly, so the double gate has to be crossed on purpose in both
+# places before this ever talks to the live site. It never registers an
+# account or signs in; it only reads what a browser sees before signing in,
+# on this hosted shared instance where the sign-in gate is the entry.
+
+name: E2E multiuser live smoke
+
+on:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+env:
+    NODE_VERSION: "24"
+    PNPM_VERSION: "11.1.2"
+
+jobs:
+    live-smoke:
+        name: Live hosted instance smoke (read-only)
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        permissions:
+            contents: read
+        steps:
+            - name: Checkout
+              uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+
+            - name: Set up Node/pnpm
+              uses: ./.github/actions/setup-node-pnpm
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  pnpm-version: ${{ env.PNPM_VERSION }}
+
+            - name: Install JS dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Install Playwright Chromium
+              run: pnpm exec playwright install chromium --with-deps
+
+            - name: Run read-only live smoke spec
+              env:
+                  E2E_LIVE_SMOKE: "1"
+              run: pnpm exec playwright test --config=playwright.live.config.js

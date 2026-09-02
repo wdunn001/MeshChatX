@@ -1,0 +1,34 @@
+[package]
+name = "lxmf-stamper-wasm"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Small standalone wasm-bindgen wrapper around rsLXMF's LXMF stamp (proof-of-work) primitives, for onboarding UIs that need to solve a stamp client-side without shipping the whole LXMF node."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Same crates rns-crypto's hkdf.rs / sha.rs wrap (rns_crypto::hkdf::hkdf_sha256,
+# rns_crypto::sha::sha256), depended on directly instead of via rns-crypto so
+# this crate does not drag in ed25519-dalek/x25519-dalek (rns-crypto's identity
+# and session-crypto deps, unused by the stamper and getrandom-0.2-only, which
+# would otherwise force an extra legacy getrandom "js" shim for wasm).
+sha2 = "0.10"
+hkdf = "0.12"
+rmpv = "1"
+rand = { version = "0.9", default-features = false, features = ["std", "std_rng", "thread_rng"] }
+getrandom = { version = "0.3", features = ["wasm_js"] }
+wasm-bindgen = "=0.2.127"
+console_error_panic_hook = { version = "0.1", optional = true }
+
+[features]
+default = ["panic-hook"]
+panic-hook = ["console_error_panic_hook"]
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

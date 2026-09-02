@@ -70,7 +70,7 @@ def is_available():
 def _msgpack():
     """Prefer a standalone umsgpack, fall back to the copy vendored in RNS."""
     try:
-        import umsgpack
+        import umsgpack  # pyright: ignore[reportMissingImports]
 
         return umsgpack
     except ImportError:

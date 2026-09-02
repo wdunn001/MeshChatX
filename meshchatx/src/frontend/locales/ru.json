@@ -2240,7 +2240,12 @@
         "tab_content_mismatch": "Вкладка была не синхронизирована и перезагружается",
         "tab_restore_failed": "Не удалось восстановить страницу вкладки",
         "open_node_failed": "Не удалось открыть узел NomadNet",
-        "hide_source": "Скрыть исходник"
+        "hide_source": "Скрыть исходник",
+        "name_not_found": "Ни один резолвер не знает это имя: ",
+        "name_ambiguous": "Это имя зарегистрировала более чем одна идентичность, поэтому оно не было использовано. Откройте страницу по хешу назначения: ",
+        "name_resolver_unreachable": "Не удалось связаться с резолвером для поиска: ",
+        "name_resolution_off": "Разрешение имён отключено. Добавьте резолвер в разделе Настройки, NomadNet, чтобы открывать страницы по имени: ",
+        "load_phase_resolving_name": "Имя ищется через резолвер"
     },
     "forwarder": {
         "title": "LXMF Форвардер",
@@ -3833,7 +3838,9 @@
             "maintenance": "Обслуживание",
             "maintenance_desc": "Очистка, экспорт, импорт и источники",
             "plugins": "Плагины",
-            "plugins_desc": "Установка и управление плагинами MeshChatX"
+            "plugins_desc": "Установка и управление плагинами MeshChatX",
+            "network_desc_personal": "Визуализация сети, обход страниц и звонки",
+            "privacy_desc_personal": "Ваши собственные данные"
         },
         "nav_label": "Разделы настроек",
         "search_label": "Поиск настроек",
@@ -4344,9 +4351,25 @@
         "set_password": "Задать пароль",
         "login": "Войти",
         "passwords_mismatch": "Пароли не совпадают",
-        "altcha_required": "Сначала завершите проверку",
+        "stamp_required": "Сначала завершите проверку",
+        "stamp_solving": "Solving proof of work...",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
         "status_check_failed": "Не удалось проверить состояние аутентификации",
         "failed": "Ошибка аутентификации"
+    },
+    "accounts": {
+        "stamp_pending": "Proving you're not a robot. This can take a few seconds on a phone.",
+        "stamp_progress": "{attempts} attempts, {seconds}s so far",
+        "stamp_failed": "That proof of work failed. Try again.",
+        "stamp_unavailable": "Proof of work could not run in this browser. Reload the page and try again.",
+        "signed_in_as": "Вы вошли как",
+        "sign_out": "Выйти",
+        "signing_out": "Выполняется выход",
+        "sign_out_failed": "Выход не дошёл до сервера. Этот браузер всё равно очищен.",
+        "stamp_notice": "Этот экземпляр сначала просит ваш браузер выполнить небольшое доказательство работы.",
+        "stamp_done": "Доказательство работы выполнено за {seconds} с, попыток: {attempts}."
     },
     "post_install": {
         "windows_screen_security_title": "Включить защиту экрана Windows?",
@@ -4450,5 +4473,45 @@
         "delete": "Удалить",
         "delete_confirm": "Удалить «{name}» из папки синхронизации?",
         "delete_done": "Удалено"
+    },
+    "hosted_welcome": {
+        "address_body": "Любой, у кого есть этот адрес, может связаться с вами. Он принадлежит вам.",
+        "address_label": "Ваш адрес",
+        "close": "Закрыть",
+        "copy_address": "Скопировать адрес",
+        "find_body": "Чтобы связаться с кем-то, нужен его адрес. Поделитесь своим или посмотрите, кто ещё здесь.",
+        "name_body": "Это имя видят другие, когда ваш адрес появляется в сети.",
+        "name_label": "Вы отображаетесь как",
+        "open_announces": "Посмотреть, кто ещё здесь",
+        "show_qr": "Показать QR-код",
+        "title": "Вы в сети mesh"
+    },
+    "accounts_admin": {
+        "description": "Все, кто может войти в этот экземпляр.",
+        "disabled": "Отключена",
+        "empty": "Учётных записей пока нет.",
+        "enabled": "Включена",
+        "identity": "Идентичность",
+        "last_login": "Последний вход",
+        "load_failed": "Не удалось загрузить список учётных записей",
+        "never": "Никогда",
+        "registration_closed_help": "Со страницы входа никто новый не может создать учётную запись.",
+        "registration_open_help": "Любой, кто может достучаться до этого экземпляра, может создать учётную запись.",
+        "registration_title": "Регистрация",
+        "registration_toggle": "Разрешить всем создавать учётные записи",
+        "remove": "Удалить",
+        "remove_confirm": "Удалить {username}? Идентичность и сообщения останутся на этой машине.",
+        "removed": "Учётная запись удалена",
+        "role": "Роль",
+        "role_admin": "Администратор",
+        "role_contributor": "Участник",
+        "role_help": "Пользователь получает доступ к своим сообщениям и к сети. Участник вдобавок публикует на общем узле и запускает ботов. Администратор управляет экземпляром.",
+        "role_user": "Пользователь",
+        "status": "Состояние",
+        "title": "Учётные записи",
+        "update_failed": "Изменение отклонено",
+        "updated": "Учётная запись обновлена",
+        "username": "Имя пользователя",
+        "you": "Вы"
     }
 }

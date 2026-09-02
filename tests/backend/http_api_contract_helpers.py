@@ -13,6 +13,14 @@ _ROUTE_DECORATOR = re.compile(
     re.MULTILINE,
 )
 
+# Routes added straight to the router rather than through a decorated
+# table. The rns-resolve bridge is registered that way in meshchat.py, so
+# without this the frontend check reports its two paths as unknown.
+_ROUTER_ADD = re.compile(
+    r'\.router\.add_(get|post|patch|delete|put)\(\s*(?:\n\s*)?["\']([^"\']+)["\']',
+    re.MULTILINE,
+)
+
 
 def http_route_source_paths(repo_root: Path) -> list[Path]:
     """Return source files that may declare aiohttp route decorators."""
@@ -20,6 +28,13 @@ def http_route_source_paths(repo_root: Path) -> list[Path]:
     http_root = repo_root / "meshchatx" / "src" / "backend" / "http"
     if http_root.is_dir():
         paths.extend(sorted(http_root.rglob("*.py")))
+    # Registered from its own package rather than under backend/http, and
+    # only when the instance runs in accounts mode. The frontend calls
+    # these paths on every hosted instance, so leaving them out of the
+    # manifest reports them as endpoints that do not exist.
+    paths.append(
+        repo_root / "meshchatx" / "src" / "backend" / "multiuser" / "routes.py",
+    )
     return [p for p in paths if p.is_file()]
 
 
@@ -43,12 +58,13 @@ def extract_meshchat_http_routes(meshchat_py: Path) -> list[dict[str, str]]:
     seen: set[tuple[str, str]] = set()
     for path in http_route_source_paths(repo_root):
         text = path.read_text(encoding="utf-8")
-        for m in _ROUTE_DECORATOR.finditer(text):
-            key = (m.group(1).upper(), m.group(2))
-            if key in seen:
-                continue
-            seen.add(key)
-            rows.append({"method": key[0], "path": key[1]})
+        for pattern in (_ROUTE_DECORATOR, _ROUTER_ADD):
+            for m in pattern.finditer(text):
+                key = (m.group(1).upper(), m.group(2))
+                if key in seen:
+                    continue
+                seen.add(key)
+                rows.append({"method": key[0], "path": key[1]})
     rows.sort(key=lambda x: (x["path"], x["method"]))
     return rows
 

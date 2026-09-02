@@ -1,0 +1,124 @@
+name: Build EmComm terminal
+
+# Builds the hosted onboarding terminal image and publishes it, so .40 pulls a
+# finished image instead of compiling one. Building on .40 meant the deploy
+# could fail on a host that people are actively using, and it tied the rollout
+# to that machine's toolchain.
+#
+# Runs on the .88 forgejo-runner (runs-on: docker, host docker.sock mounted).
+#
+# WHICH SIDE OF THE SOCKET: this job drives the HOST daemon through a mounted
+# socket. Anything the daemon executes resolves on the host, so a bind mount of
+# a job-container path silently mounts nothing. Client-side operations are fine
+# with job-container paths, because the CLI streams them: docker build tars its
+# context locally, and docker login writes credentials the CLI then sends.
+#
+# The wasm node is overlaid onto the finished image rather than built in. It is
+# fetched at runtime from /vendor/ by the frontend, never bundled by vite, so it
+# does not need to be present before the frontend build. Keeping it out of the
+# repo Dockerfile also means an upstream or .40 build still works without
+# reaching our private registry.
+
+on:
+  push:
+    branches: [feat/multi-user]
+  workflow_dispatch:
+    inputs:
+      wasm_node_tag:
+        description: 'rns-wasm-node tag to embed'
+        required: false
+        default: ''
+
+env:
+  REGISTRY: devops.quasarke.net
+  REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
+  REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+  TERMINAL_IMAGE: devops.quasarke.net/emcomm/terminal
+  WASM_NODE_IMAGE: devops.quasarke.net/emcomm/rns-wasm-node
+  # Pinned rather than :latest so a terminal tag always names one exact wasm
+  # build. Bump deliberately, or override via workflow_dispatch.
+  WASM_NODE_TAG_DEFAULT: e1a965c
+
+jobs:
+  build:
+    name: build and publish terminal
+    runs-on: docker
+    steps:
+      - name: Build and publish
+        run: |
+          set -eu
+
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends git ca-certificates docker.io >/dev/null
+
+          if [ -z "${REGISTRY_TOKEN:-}" ]; then
+            echo "REGISTRY_TOKEN secret is empty. Set REGISTRY_USER and REGISTRY_TOKEN" >&2
+            echo "on this repo; without them every push fails as 'unauthorized'." >&2
+            exit 1
+          fi
+          printf '%s' "${REGISTRY_TOKEN}" \
+            | docker login "${REGISTRY}" -u "${REGISTRY_USER}" --password-stdin
+          trap 'docker logout "${REGISTRY}" >/dev/null 2>&1 || true' EXIT
+
+          WASM_TAG="${{ github.event.inputs.wasm_node_tag }}"
+          [ -n "$WASM_TAG" ] || WASM_TAG="${WASM_NODE_TAG_DEFAULT}"
+
+          git clone -q "http://token:${{ github.token }}@192.168.1.88:8530/${GITHUB_REPOSITORY}.git" /tmp/src
+          cd /tmp/src && git checkout -q "${GITHUB_SHA}"
+          SHORT_SHA="$(git rev-parse --short HEAD)"
+
+          # Fail early and clearly if the pinned artifact is missing, rather
+          # than part way through a long application build.
+          if ! docker pull -q "${WASM_NODE_IMAGE}:${WASM_TAG}" >/dev/null; then
+            echo "wasm artifact ${WASM_NODE_IMAGE}:${WASM_TAG} is not in the registry." >&2
+            echo "Build it from rsReticulum first, or pass a tag that exists." >&2
+            exit 1
+          fi
+
+          echo "building application image at ${SHORT_SHA}"
+          docker build \
+            --build-arg OCI_REVISION="${GITHUB_SHA}" \
+            --build-arg OCI_VERSION="${SHORT_SHA}" \
+            -t "emcomm-terminal-base:${SHORT_SHA}" /tmp/src
+
+          # Overlay the browser Reticulum node. The destination is discovered
+          # rather than written out, because it contains the interpreter version
+          # (.../python3.14/site-packages/...) and a base image bump would
+          # otherwise put the files somewhere nothing serves them, with no error.
+          mkdir -p /tmp/overlay
+          cat > /tmp/overlay/Dockerfile <<DOCKERFILE
+          FROM ${WASM_NODE_IMAGE}:${WASM_TAG} AS wasm
+          FROM emcomm-terminal-base:${SHORT_SHA}
+          USER root
+          COPY --from=wasm /pkg/ /tmp/rns-wasm-node/
+          RUN set -eu; \
+              dest="\$(find /opt/venv/lib -maxdepth 6 -type d -path '*/meshchatx/public/vendor' | head -1)"; \
+              [ -n "\$dest" ] || { echo 'public/vendor not found in image' >&2; exit 1; }; \
+              mkdir -p "\$dest/rns-wasm-node"; \
+              cp -a /tmp/rns-wasm-node/. "\$dest/rns-wasm-node/"; \
+              rm -rf /tmp/rns-wasm-node; \
+              chown -R meshchat:meshchat "\$dest/rns-wasm-node"; \
+              echo "embedded rns-wasm-node at \$dest/rns-wasm-node"
+          USER meshchat
+          DOCKERFILE
+
+          docker build -t "${TERMINAL_IMAGE}:${SHORT_SHA}" -t "${TERMINAL_IMAGE}:latest" /tmp/overlay
+
+          # Prove the artifact is actually served from where the frontend looks
+          # for it before anything is published.
+          docker run --rm --entrypoint sh "${TERMINAL_IMAGE}:${SHORT_SHA}" -c '
+            set -eu
+            dest="$(find /opt/venv/lib -maxdepth 6 -type d -name rns-wasm-node | head -1)"
+            [ -n "$dest" ] || { echo "rns-wasm-node missing from the built image" >&2; exit 1; }
+            test -s "$dest/rns_wasm_node_bg.wasm"
+            head -c 4 "$dest/rns_wasm_node_bg.wasm" | od -c | head -1
+            echo "verified at $dest"
+          '
+
+          docker push -q "${TERMINAL_IMAGE}:${SHORT_SHA}"
+          docker push -q "${TERMINAL_IMAGE}:latest"
+
+          echo "published ${TERMINAL_IMAGE}:${SHORT_SHA}"
+          echo "embedded wasm ${WASM_NODE_IMAGE}:${WASM_TAG}"
+          docker image inspect "${TERMINAL_IMAGE}:${SHORT_SHA}" \
+            --format 'image size: {{.Size}} bytes'
